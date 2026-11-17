@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="WebBanking.Api/WebBanking.Api.csproj" />
+  <Project Path="WebBanking.Client/WebBanking.Client.csproj" />
+  <Project Path="WebBanking.Contracts/WebBanking.Contracts.csproj" />
+  <Project Path="WebBanking.Tests/WebBanking.Tests.csproj" />
+</Solution>

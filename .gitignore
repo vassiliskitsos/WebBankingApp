@@ -1,0 +1,35 @@
+# Μυστικά / περιβάλλον
+.env
+*.local
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+TestResults/
+*.db
+*.sqlite
+
+# Node / Frontend
+node_modules/
+dist/
+build/
+.vite/
+coverage/
+npm-debug.log*
+
+# Playwright
+playwright-report/
+test-results/
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Λειτουργικό σύστημα
+.DS_Store
+Thumbs.db
