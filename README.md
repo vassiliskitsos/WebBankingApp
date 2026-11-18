@@ -291,10 +291,24 @@ dotnet build WebBanking.slnx
 cp .env.example .env
 ```
 
-Εκκίνηση της βάσης, εφαρμογή migrations και εκτέλεση του API:
+Εκκίνηση της βάσης (απαιτείται Docker σε λειτουργία) και έλεγχος υγείας:
 
 ```bash
-docker compose up -d db
+docker compose up -d --wait db
+docker compose ps
+docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "select 1"'
+```
+
+Τερματισμός της βάσης (τα δεδομένα διατηρούνται) ή πλήρης επαναφορά (σβήνει τα δεδομένα):
+
+```bash
+docker compose down
+docker compose down -v
+```
+
+Εφαρμογή migrations και εκτέλεση του API (το `dotnet ef` προστίθεται με το KAN-25):
+
+```bash
 dotnet ef database update --project WebBanking.Api
 dotnet run --project WebBanking.Api
 ```
