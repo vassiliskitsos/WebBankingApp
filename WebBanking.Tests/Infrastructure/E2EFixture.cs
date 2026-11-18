@@ -52,7 +52,7 @@ public sealed class E2EFixture : IAsyncLifetime
 
     private static string PublishClient()
     {
-        var output = Path.Combine(Path.GetTempPath(), "webbanking-e2e-client");
+        var output = Path.Combine(Path.GetTempPath(), $"webbanking-e2e-client-{Guid.NewGuid():N}");
         var clientProject = Path.Combine(FindRepositoryRoot(), "WebBanking.Client");
 
         using var publish = Process.Start("dotnet", $"publish \"{clientProject}\" -c Debug -o \"{output}\" --nologo -v q")
