@@ -21,3 +21,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+// Χρειάζεται για το WebApplicationFactory<Program> στα integration tests.
+public partial class Program;
