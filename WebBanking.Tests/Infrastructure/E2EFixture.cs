@@ -8,6 +8,7 @@ public sealed class E2EFixture : IAsyncLifetime
 {
     private E2EApiFactory? _api;
     private IPlaywright? _playwright;
+    private string? _publishFolder;
 
     public string ApiBaseUrl { get; private set; } = null!;
 
@@ -15,7 +16,22 @@ public sealed class E2EFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        var clientFolder = await Task.Run(PublishClient);
+        try
+        {
+            await StartAsync();
+        }
+        catch
+        {
+            // clean up whatever was started before the failure, including a partial publish
+            await DisposeAsync();
+            throw;
+        }
+    }
+
+    private async Task StartAsync()
+    {
+        _publishFolder = Path.Combine(Path.GetTempPath(), $"webbanking-e2e-client-{Guid.NewGuid():N}");
+        var clientFolder = await Task.Run(() => PublishClient(_publishFolder));
 
         _api = new E2EApiFactory(clientFolder);
         _api.UseKestrel(0);
@@ -37,22 +53,37 @@ public sealed class E2EFixture : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        if (Browser is not null)
+        try
         {
-            await Browser.DisposeAsync();
+            if (Browser is not null)
+            {
+                await Browser.DisposeAsync();
+                Browser = null!;
+            }
+
+            _playwright?.Dispose();
+            _playwright = null;
+
+            if (_api is not null)
+            {
+                await _api.DisposeAsync();
+                _api = null;
+            }
         }
-
-        _playwright?.Dispose();
-
-        if (_api is not null)
+        finally
         {
-            await _api.DisposeAsync();
+            // the host is disposed first, so it no longer serves files from this folder
+            if (_publishFolder is not null && Directory.Exists(_publishFolder))
+            {
+                Directory.Delete(_publishFolder, recursive: true);
+            }
+
+            _publishFolder = null;
         }
     }
 
-    private static string PublishClient()
+    private static string PublishClient(string output)
     {
-        var output = Path.Combine(Path.GetTempPath(), $"webbanking-e2e-client-{Guid.NewGuid():N}");
         var clientProject = Path.Combine(FindRepositoryRoot(), "WebBanking.Client");
 
         using var publish = Process.Start("dotnet", $"publish \"{clientProject}\" -c Debug -o \"{output}\" --nologo -v q")
