@@ -76,7 +76,7 @@ flowchart LR
 Τα services δεν πετούν exceptions για αναμενόμενες αποτυχίες (λάθος κωδικός, ανεπαρκές υπόλοιπο, μη υπαρκτός λογαριασμός). Επιστρέφουν `Result<T>`. Τα exceptions κρατιούνται για σφάλματα προγραμματισμού.
 
 ```csharp
-public sealed record Error(ErrorType Type, string Code, string Message);
+public sealed record Error(ErrorType Type, string Message);
 
 public enum ErrorType { Validation, Unauthorized, NotFound, Conflict, Unprocessable }
 
@@ -88,7 +88,7 @@ public readonly record struct Result<T>(T? Value, Error? Error)
 }
 ```
 
-Ο controller μετατρέπει το `Result` σε HTTP απάντηση με ένα μόνο σημείο:
+Ο παρακάτω πίνακας αντιστοιχίζει κάθε `ErrorType` (από το `WebBanking.Contracts.Common`) στον αντίστοιχο κωδικό HTTP status που επιστρέφει ο controller:
 
 | `ErrorType` | HTTP status |
 |---|---|
