@@ -23,7 +23,15 @@ public sealed class E2EFixture : IAsyncLifetime
         catch
         {
             // clean up whatever was started before the failure, including a partial publish
-            await DisposeAsync();
+            try
+            {
+                await DisposeAsync();
+            }
+            catch
+            {
+                // a cleanup failure must not hide the original startup error
+            }
+
             throw;
         }
     }
