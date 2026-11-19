@@ -76,7 +76,7 @@ flowchart LR
 Τα services δεν πετούν exceptions για αναμενόμενες αποτυχίες (λάθος κωδικός, ανεπαρκές υπόλοιπο, μη υπαρκτός λογαριασμός). Επιστρέφουν `Result<T>`. Τα exceptions κρατιούνται για σφάλματα προγραμματισμού.
 
 ```csharp
-public sealed record Error(ErrorType Type, string Code, string Message);
+public sealed record Error(ErrorType Type, string Message);
 
 public enum ErrorType { Validation, Unauthorized, NotFound, Conflict, Unprocessable }
 
@@ -88,7 +88,7 @@ public readonly record struct Result<T>(T? Value, Error? Error)
 }
 ```
 
-Ο controller μετατρέπει το `Result` σε HTTP απάντηση με ένα μόνο σημείο:
+Ο παρακάτω πίνακας αντιστοιχίζει κάθε `ErrorType` (από το `WebBanking.Contracts.Common`) στον αντίστοιχο κωδικό HTTP status που επιστρέφει ο controller:
 
 | `ErrorType` | HTTP status |
 |---|---|
@@ -291,30 +291,6 @@ dotnet build WebBanking.slnx
 ```bash
 cp .env.example .env
 ```
-
-### Φόρτωση μεταβλητών περιβάλλοντος
-
-Πριν από την εκκίνηση του API, αντικαταστήστε
-τις ενδεικτικές τιμές στο `.env` με τοπικές
-ρυθμίσεις και ένα ισχυρό JWT_SECRET.
-
-Για το JWT_SECRET προτιμήστε ένα τυχαίο κλειδί με
-χαρακτήρες ασφαλείς για το shell, π.χ. από την εντολή
-`openssl rand -hex 32`, ώστε το `source .env` να μην
-αλλοιώνει την τιμή του.
-
-Σε macOS/Linux (bash ή zsh), από τον κεντρικό
-φάκελο του repository εκτελέστε:
-
-```bash
-set -a
-source .env
-set +a
-```
-
-Το ASP.NET Core δεν φορτώνει αυτόματα το `.env`.
-Το αρχείο πρέπει να προέρχεται από αξιόπιστη
-πηγή και δεν πρέπει να ανεβαίνει στο GitHub.
 
 Εκκίνηση της βάσης (απαιτείται Docker σε λειτουργία) και έλεγχος υγείας:
 
