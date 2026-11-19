@@ -4,7 +4,7 @@ namespace WebBanking.Contracts.Transfers;
 
 public sealed record TransferRequest
 {
-    [Required]
+    [Range(1, int.MaxValue, ErrorMessage = "Το αναγνωριστικό λογαριασμού προέλευσης είναι υποχρεωτικό.")]
     public int FromAccountId { get; init; }
 
     [Required(ErrorMessage = "Το IBAN παραλήπτη είναι υποχρεωτικό.")]
