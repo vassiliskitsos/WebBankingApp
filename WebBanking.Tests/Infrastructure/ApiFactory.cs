@@ -17,5 +17,9 @@ public sealed class ApiFactory(string connectionString) : WebApplicationFactory<
                 ["ConnectionStrings:Default"] = connectionString
             });
         });
+
+        // Program.cs reads these while the builder is created, so they must be host settings.
+        builder.UseSetting("JWT_SECRET", "integration-tests-only-secret-key-32b!");
+        builder.UseSetting("JWT_ISSUER", "WebBankingApp.Tests");
     }
 }
