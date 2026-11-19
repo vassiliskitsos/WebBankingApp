@@ -1,0 +1,122 @@
+@page "/register"
+@using System.ComponentModel.DataAnnotations
+@inject NavigationManager Navigation
+
+<PageTitle>Εγγραφή - WebBanking</PageTitle>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h3 class="card-title text-center mb-3">Δημιουργία Λογαριασμού</h3>
+                    <p class="text-muted text-center small mb-4">
+                        Συμπληρώστε τα στοιχεία σας για να εγγραφείτε ως πελάτης (US-01).
+                    </p>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            @errorMessage
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(successMessage))
+                    {
+                        <div class="alert alert-success" role="alert">
+                            @successMessage
+                        </div>
+                    }
+
+                    <EditForm Model="@model" OnValidSubmit="HandleRegisterAsync">
+                        <DataAnnotationsValidator />
+
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Όνομα Χρήστη (Username)</label>
+                            <InputText id="username" class="form-control" @bind-Value="model.Username" placeholder="π.χ. theofania" />
+                            <ValidationMessage For="@(() => model.Username)" class="text-danger small" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Κωδικός Πρόσβασης</label>
+                            <InputText id="password" type="password" class="form-control" @bind-Value="model.Password" placeholder="Τουλάχιστον 6 χαρακτήρες" />
+                            <ValidationMessage For="@(() => model.Password)" class="text-danger small" />
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="confirmPassword" class="form-label">Επιβεβαίωση Κωδικού</label>
+                            <InputText id="confirmPassword" type="password" class="form-control" @bind-Value="model.ConfirmPassword" placeholder="Επαναλάβετε τον κωδικό" />
+                            <ValidationMessage For="@(() => model.ConfirmPassword)" class="text-danger small" />
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100" disabled="@isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span>Γίνεται εγγραφή...</span>
+                            }
+                            else
+                            {
+                                <span>Εγγραφή</span>
+                            }
+                        </button>
+                    </EditForm>
+
+                    <hr class="my-4" />
+
+                    <div class="text-center">
+                        <span class="text-muted small">Έχετε ήδη λογαριασμό;</span>
+                        <a href="/login" class="small fw-semibold text-decoration-none ms-1">Σύνδεση</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private RegisterFormModel model = new();
+    private string? errorMessage;
+    private string? successMessage;
+    private bool isSubmitting;
+
+    private async Task HandleRegisterAsync()
+    {
+        errorMessage = null;
+        successMessage = null;
+        isSubmitting = true;
+
+        try
+        {
+            // Προσωρινή προσομοίωση κλήσης API μέχρι να συνδεθεί το ApiClient στο task S1-08
+            await Task.Delay(500);
+
+            successMessage = $"Ο λογαριασμός για τον χρήστη '{model.Username}' δημιουργήθηκε επιτυχώς!";
+            model = new RegisterFormModel();
+        }
+        catch (Exception)
+        {
+            errorMessage = "Παρουσιάστηκε σφάλμα κατά την εγγραφή. Παρακαλούμε δοκιμάστε ξανά.";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    public sealed class RegisterFormModel
+    {
+        [Required(ErrorMessage = "Το όνομα χρήστη είναι υποχρεωτικό.")]
+        [MinLength(3, ErrorMessage = "Το όνομα χρήστη πρέπει να έχει τουλάχιστον 3 χαρακτήρες.")]
+        [MaxLength(50, ErrorMessage = "Το όνομα χρήστη δεν μπορεί να υπερβαίνει τους 50 χαρακτήρες.")]
+        public string Username { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Ο κωδικός πρόσβασης είναι υποχρεωτικός.")]
+        [MinLength(6, ErrorMessage = "Ο κωδικός πρόσβασης πρέπει να έχει τουλάχιστον 6 χαρακτήρες.")]
+        public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Η επιβεβαίωση κωδικού είναι υποχρεωτική.")]
+        [Compare(nameof(Password), ErrorMessage = "Οι κωδικοί πρόσβασης δεν ταιριάζουν.")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+}
