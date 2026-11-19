@@ -270,9 +270,10 @@ WebBankingApp/
 │   └── Common/                   # Result<T>, Error
 ├── WebBanking.Client/            # Blazor WebAssembly
 ├── WebBanking.Contracts/         # DTOs κοινά για client και API
-├── WebBanking.Tests/             # xUnit + WebApplicationFactory (integration)
-└── tests/
-    └── e2e/                      # Playwright
+└── WebBanking.Tests/             # xUnit tests
+    ├── Infrastructure/           # Κοινά fixtures: Testcontainers PostgreSQL, WebApplicationFactory, Playwright
+    ├── Tests/                    # Integration tests
+    └── E2ETests/                 # End-to-end tests με Playwright για .NET
 ```
 
 ---
@@ -345,10 +346,15 @@ dotnet run --project WebBanking.Client
 
 Tests:
 
+Τα integration tests ξεκινούν PostgreSQL με Testcontainers, οπότε χρειάζονται Docker σε λειτουργία. Τα e2e tests κατεβάζουν μόνα τους τον Chromium την πρώτη φορά, κάνουν publish το Blazor client σε προσωρινό φάκελο (κάθε εκτέλεση, περίπου 30 δευτερόλεπτα) και ξεκινούν το API, που στα tests σερβίρει και τα αρχεία του client.
+
 ```bash
 dotnet test WebBanking.Tests
-npx playwright test
+dotnet test WebBanking.Tests --filter "FullyQualifiedName~.Tests.Tests"
+dotnet test WebBanking.Tests --filter "FullyQualifiedName~E2ETests"
 ```
+
+Η πρώτη εντολή τρέχει όλα τα tests, η δεύτερη μόνο τα integration και η τρίτη μόνο τα e2e.
 
 ---
 
@@ -371,8 +377,8 @@ npx playwright test
 
 Δεν απαιτούνται unit tests. Απαιτούνται **αυτοματοποιημένα integration tests** μέχρι το τέλος του εξαμήνου. Τα tests τρέχουν πριν ολοκληρωθεί κάθε sprint· ένα story δεν θεωρείται ολοκληρωμένο αν δεν περνούν.
 
-- **Integration (`WebBanking.Tests/`):** xUnit με `WebApplicationFactory` σε δοκιμαστική βάση PostgreSQL. Καλύπτουν: εγγραφή και σύνδεση, μεταφορά με επαρκές και ανεπαρκές υπόλοιπο, `401` / `403` / `404`, CRUD δικαιούχων.
-- **End-to-end (`tests/e2e/`):** Playwright για τις βασικές ροές από το UI.
+- **Integration (`WebBanking.Tests/Tests/`):** xUnit με `WebApplicationFactory` σε δοκιμαστική βάση PostgreSQL. Καλύπτουν: εγγραφή και σύνδεση, μεταφορά με επαρκές και ανεπαρκές υπόλοιπο, `401` / `403` / `404`, CRUD δικαιούχων.
+- **End-to-end (`WebBanking.Tests/E2ETests/`):** Playwright για .NET (xUnit) για τις βασικές ροές από το UI.
 
 ---
 
