@@ -12,6 +12,9 @@ public sealed class E2EApiFactory(string clientFolder) : WebApplicationFactory<P
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseSetting("JWT_SECRET", "integration-tests-only-secret-key-32b!");
+        builder.UseSetting("JWT_ISSUER", "WebBankingApp.Tests");
+
         builder.ConfigureTestServices(services =>
             services.AddTransient<IStartupFilter>(_ => new ServeClientFilesFilter(clientFolder)));
     }
