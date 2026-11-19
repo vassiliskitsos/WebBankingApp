@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace WebBanking.Api.Data.Entities;
 
 public class Account
@@ -10,7 +12,7 @@ public class Account
 
     public string Iban { get; set; } = string.Empty;
 
-    // Stored as decimal(18,2) (configured in AppDbContext, KAN-25).
+    [Column(TypeName = "decimal(18,2)")]
     public decimal Balance { get; set; }
 
     // ISO 4217 code, e.g. "EUR".

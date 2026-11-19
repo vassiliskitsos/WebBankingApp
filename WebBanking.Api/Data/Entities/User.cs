@@ -9,8 +9,8 @@ public class User
     // Hash only. Never store plaintext passwords.
     public string PasswordHash { get; set; } = string.Empty;
 
-    // "Customer" | "Admin" (see README section 4).
-    public string Role { get; set; } = "Customer";
+    // See README section 4.
+    public Role Role { get; set; } = Role.Customer;
 
     public ICollection<Account> Accounts { get; set; } = new List<Account>();
 }
