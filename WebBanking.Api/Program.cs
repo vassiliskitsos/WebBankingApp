@@ -3,6 +3,10 @@ using WebBanking.Api.Repositories;
 using WebBanking.Api.Data.Entities;
 using Microsoft.AspNetCore.Identity;
 
+using Microsoft.AspNetCore.Identity;
+using WebBanking.Api.Data.Entities;
+using WebBanking.Api.Repositories;
+using WebBanking.Api.Services;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +18,11 @@ var builder = WebApplication.CreateBuilder(args);
 // API services
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+
+// KAN-16: Registration services
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IRegistrationService, RegistrationService>();
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
 // KAN-16: Registration services
 builder.Services.AddScoped<IUserRepository, UserRepository>();
