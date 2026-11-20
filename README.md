@@ -196,7 +196,7 @@ erDiagram
         string Iban UK
         decimal Balance "decimal(18,2)"
         string Currency "ISO 4217, π.χ. EUR"
-        bytes RowVersion "optimistic concurrency"
+        uint RowVersion "optimistic concurrency (PostgreSQL xmin)"
     }
     TRANSACTION {
         int Id PK
@@ -307,7 +307,14 @@ docker compose down
 docker compose down -v
 ```
 
-Εφαρμογή migrations και εκτέλεση του API (το `dotnet ef` προστίθεται με το KAN-25):
+Εφαρμογή migrations και εκτέλεση του API. Το .NET δεν διαβάζει το `.env`, οπότε το connection string δίνεται ως μεταβλητή περιβάλλοντος (με τις τιμές του `.env`):
+
+```bash
+export ConnectionStrings__Default="Host=localhost;Port=5432;Database=webbanking;Username=webbanking;Password=<POSTGRES_PASSWORD>"
+```
+
+Νέο migration μετά από αλλαγή στα entities: `dotnet ef migrations add <Όνομα> --project WebBanking.Api --output-dir Data/Migrations`.
+
 
 ```bash
 dotnet ef database update --project WebBanking.Api
