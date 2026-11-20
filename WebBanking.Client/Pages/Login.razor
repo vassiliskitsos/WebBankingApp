@@ -96,16 +96,9 @@
         {
             foreach (var result in validationResults)
             {
-                if (result.MemberNames.Any())
+                foreach (var memberName in result.MemberNames)
                 {
-                    foreach (var memberName in result.MemberNames)
-                    {
-                        messageStore.Add(editContext.Field(memberName), result.ErrorMessage ?? "Μη έγκυρη τιμή.");
-                    }
-                }
-                else
-                {
-                    messageStore.Add(new FieldIdentifier(model, string.Empty), result.ErrorMessage ?? "Μη έγκυρα στοιχεία.");
+                    messageStore.Add(editContext.Field(memberName), result.ErrorMessage ?? "Μη έγκυρη τιμή.");
                 }
             }
 
@@ -118,7 +111,8 @@
 
         try
         {
-            // Προσωρινή κλήση μέχρι να συνδεθεί το ApiClient & AuthenticationStateProvider
+            // TODO(S1-08): Replace this placeholder with the real login call through ApiClient and AuthenticationStateProvider.
+            // Until then, any password except "wrong" is accepted.
             await Task.Delay(500);
 
             if (request.Password == "wrong")
