@@ -1,0 +1,144 @@
+@page "/login"
+@using System.ComponentModel.DataAnnotations
+@using WebBanking.Contracts.Auth
+@inject NavigationManager Navigation
+
+<PageTitle>Σύνδεση - WebBanking</PageTitle>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h3 class="card-title text-center mb-3">Σύνδεση</h3>
+                    <p class="text-muted text-center small mb-4">
+                        Εισάγετε τα στοιχεία σας για πρόσβαση στον λογαριασμό σας (US-02).
+                    </p>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            @errorMessage
+                        </div>
+                    }
+
+                    <EditForm EditContext="@editContext" OnSubmit="HandleLoginAsync">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Όνομα Χρήστη (Username)</label>
+                            <InputText id="username" class="form-control" @bind-Value="model.Username" placeholder="π.χ. theofania" />
+                            <ValidationMessage For="@(() => model.Username)" class="text-danger small" />
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="password" class="form-label">Κωδικός Πρόσβασης</label>
+                            <InputText id="password" type="password" class="form-control" @bind-Value="model.Password" placeholder="Εισάγετε τον κωδικό σας" />
+                            <ValidationMessage For="@(() => model.Password)" class="text-danger small" />
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100" disabled="@isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span>Γίνεται σύνδεση...</span>
+                            }
+                            else
+                            {
+                                <span>Σύνδεση</span>
+                            }
+                        </button>
+                    </EditForm>
+
+                    <hr class="my-4" />
+
+                    <div class="text-center">
+                        <span class="text-muted small">Δεν έχετε λογαριασμό;</span>
+                        <a href="/register" class="small fw-semibold text-decoration-none ms-1">Εγγραφή</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private readonly LoginFormModel model = new();
+    private EditContext editContext = default!;
+    private ValidationMessageStore messageStore = default!;
+    private string? errorMessage;
+    private bool isSubmitting;
+
+    protected override void OnInitialized()
+    {
+        editContext = new EditContext(model);
+        messageStore = new ValidationMessageStore(editContext);
+        editContext.OnFieldChanged += (_, e) =>
+        {
+            messageStore.Clear(e.FieldIdentifier);
+            editContext.NotifyValidationStateChanged();
+        };
+    }
+
+    private async Task HandleLoginAsync()
+    {
+        errorMessage = null;
+        messageStore.Clear();
+
+        var request = new LoginRequest
+        {
+            Username = model.Username,
+            Password = model.Password
+        };
+
+        var validationResults = new List<ValidationResult>();
+        var validationContext = new ValidationContext(request);
+
+        if (!Validator.TryValidateObject(request, validationContext, validationResults, validateAllProperties: true))
+        {
+            foreach (var result in validationResults)
+            {
+                foreach (var memberName in result.MemberNames)
+                {
+                    messageStore.Add(editContext.Field(memberName), result.ErrorMessage ?? "Μη έγκυρη τιμή.");
+                }
+            }
+
+            editContext.NotifyValidationStateChanged();
+            return;
+        }
+
+        editContext.NotifyValidationStateChanged();
+        isSubmitting = true;
+
+        try
+        {
+            // TODO(S1-08): Replace this placeholder with the real login call through ApiClient and AuthenticationStateProvider.
+            // Until then, any password except "wrong" is accepted.
+            await Task.Delay(500);
+
+            if (request.Password == "wrong")
+            {
+                // Ασφαλής χειρισμός λάθος credentials (χωρίς αποκάλυψη ύπαρξης username)
+                errorMessage = "Λάθος όνομα χρήστη ή κωδικός πρόσβασης.";
+                model.Password = string.Empty;
+                return;
+            }
+
+            // Σωστή πλοήγηση μετά από επιτυχή σύνδεση
+            Navigation.NavigateTo("/");
+        }
+        catch (Exception)
+        {
+            errorMessage = "Παρουσιάστηκε σφάλμα κατά τη σύνδεση. Παρακαλούμε δοκιμάστε ξανά.";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    public sealed class LoginFormModel
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+}
