@@ -1,13 +1,30 @@
 
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using WebBanking.Api.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // API services
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+
+// Database. The connection string is read when the context is first resolved,
+// so hosts that never touch the database (e.g. the e2e tests) start without one.
+builder.Services.AddDbContext<AppDbContext>((sp, options) =>
+{
+    var connectionString = sp.GetRequiredService<IConfiguration>().GetConnectionString("Default");
+
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        throw new InvalidOperationException(
+            "ConnectionStrings:Default must be configured.");
+    }
+
+    options.UseNpgsql(connectionString);
+});
 
 // JWT configuration
 var jwtSecret = builder.Configuration["JWT_SECRET"];

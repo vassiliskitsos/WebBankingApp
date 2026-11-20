@@ -18,6 +18,6 @@ public class Account
     // ISO 4217 code, e.g. "EUR".
     public string Currency { get; set; } = "EUR";
 
-    // Optimistic concurrency token. Mapped as IsRowVersion() in AppDbContext (KAN-25).
-    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+    // Optimistic concurrency token. Mapped to PostgreSQL xmin in AccountConfiguration.
+    public uint RowVersion { get; set; }
 }
