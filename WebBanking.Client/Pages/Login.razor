@@ -22,9 +22,7 @@
                         </div>
                     }
 
-                    <EditForm Model="@model" OnValidSubmit="HandleLoginAsync">
-                        <DataAnnotationsValidator />
-
+                    <EditForm EditContext="@editContext" OnSubmit="HandleLoginAsync">
                         <div class="mb-3">
                             <label for="username" class="form-label">Όνομα Χρήστη (Username)</label>
                             <InputText id="username" class="form-control" @bind-Value="model.Username" placeholder="π.χ. theofania" />
@@ -63,23 +61,63 @@
 </div>
 
 @code {
-    private LoginFormModel model = new();
+    private readonly LoginFormModel model = new();
+    private EditContext editContext = default!;
+    private ValidationMessageStore messageStore = default!;
     private string? errorMessage;
     private bool isSubmitting;
+
+    protected override void OnInitialized()
+    {
+        editContext = new EditContext(model);
+        messageStore = new ValidationMessageStore(editContext);
+        editContext.OnFieldChanged += (_, e) =>
+        {
+            messageStore.Clear(e.FieldIdentifier);
+            editContext.NotifyValidationStateChanged();
+        };
+    }
 
     private async Task HandleLoginAsync()
     {
         errorMessage = null;
+        messageStore.Clear();
+
+        var request = new LoginRequest
+        {
+            Username = model.Username,
+            Password = model.Password
+        };
+
+        var validationResults = new List<ValidationResult>();
+        var validationContext = new ValidationContext(request);
+
+        if (!Validator.TryValidateObject(request, validationContext, validationResults, validateAllProperties: true))
+        {
+            foreach (var result in validationResults)
+            {
+                if (result.MemberNames.Any())
+                {
+                    foreach (var memberName in result.MemberNames)
+                    {
+                        messageStore.Add(editContext.Field(memberName), result.ErrorMessage ?? "Μη έγκυρη τιμή.");
+                    }
+                }
+                else
+                {
+                    messageStore.Add(new FieldIdentifier(model, string.Empty), result.ErrorMessage ?? "Μη έγκυρα στοιχεία.");
+                }
+            }
+
+            editContext.NotifyValidationStateChanged();
+            return;
+        }
+
+        editContext.NotifyValidationStateChanged();
         isSubmitting = true;
 
         try
         {
-            var request = new LoginRequest
-            {
-                Username = model.Username,
-                Password = model.Password
-            };
-
             // Προσωρινή κλήση μέχρι να συνδεθεί το ApiClient & AuthenticationStateProvider
             await Task.Delay(500);
 
@@ -106,10 +144,7 @@
 
     public sealed class LoginFormModel
     {
-        [Required(ErrorMessage = "Το όνομα χρήστη είναι υποχρεωτικό.")]
         public string Username { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "Ο κωδικός πρόσβασης είναι υποχρεωτικός.")]
         public string Password { get; set; } = string.Empty;
     }
 }
