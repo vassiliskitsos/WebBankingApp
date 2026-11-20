@@ -356,6 +356,19 @@ dotnet test WebBanking.Tests --filter "FullyQualifiedName~E2ETests"
 - **Integration (`WebBanking.Tests/Tests/`):** xUnit με `WebApplicationFactory` σε δοκιμαστική βάση PostgreSQL. Καλύπτουν: εγγραφή και σύνδεση, μεταφορά με επαρκές και ανεπαρκές υπόλοιπο, `401` / `403` / `404`, CRUD δικαιούχων.
 - **End-to-end (`WebBanking.Tests/E2ETests/`):** Playwright για .NET (xUnit) για τις βασικές ροές από το UI.
 
+#### CI (GitHub Actions)
+
+Το workflow `.github/workflows/ci.yml` τρέχει σε κάθε PR και σε κάθε push στο `main`:
+
+1. `dotnet restore` και `dotnet build` για ολόκληρη τη λύση.
+2. Εγκατάσταση του Chromium για τα end-to-end tests.
+3. `dotnet test` με όλα τα tests (integration και end-to-end). Τα integration tests ανεβάζουν PostgreSQL με Testcontainers, οπότε το runner χρειάζεται Docker (υπάρχει στο `ubuntu-latest`).
+
+Κανόνες:
+
+- Ένα PR γίνεται merge μόνο όταν το CI είναι πράσινο και το έχει εγκρίνει τουλάχιστον ένα άλλο μέλος.
+- Μετά από κάθε merge στο `main`, το CI τρέχει ξανά. Αν αποτύχει, η αποκατάσταση είναι προτεραιότητα πάνω από νέα features.
+
 ---
 
 ## 10. Συνεργασία
