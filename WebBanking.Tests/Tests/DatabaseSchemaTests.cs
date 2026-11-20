@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using WebBanking.Api.Data;
 using WebBanking.Api.Data.Entities;
 using WebBanking.Tests.Infrastructure;
@@ -44,7 +45,8 @@ public sealed class DatabaseSchemaTests : IClassFixture<PostgresFixture>, IAsync
         await using var other = CreateContext();
         other.Users.Add(NewUser("duplicate-user"));
 
-        await Assert.ThrowsAsync<DbUpdateException>(() => other.SaveChangesAsync());
+        var ex = await Assert.ThrowsAsync<DbUpdateException>(() => other.SaveChangesAsync());
+        AssertUniqueViolation(ex, "IX_Users_Username");
     }
 
     [Fact]
@@ -61,7 +63,8 @@ public sealed class DatabaseSchemaTests : IClassFixture<PostgresFixture>, IAsync
         otherUser.Accounts.Add(NewAccount("GR0000000000000000000000001"));
         other.Users.Add(otherUser);
 
-        await Assert.ThrowsAsync<DbUpdateException>(() => other.SaveChangesAsync());
+        var ex = await Assert.ThrowsAsync<DbUpdateException>(() => other.SaveChangesAsync());
+        AssertUniqueViolation(ex, "IX_Accounts_Iban");
     }
 
     [Fact]
@@ -111,6 +114,14 @@ public sealed class DatabaseSchemaTests : IClassFixture<PostgresFixture>, IAsync
         secondCopy.Balance -= 50m;
 
         await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => second.SaveChangesAsync());
+    }
+
+    // Makes sure the save failed because of this unique index, not some other database error.
+    private static void AssertUniqueViolation(DbUpdateException ex, string indexName)
+    {
+        var postgres = Assert.IsType<PostgresException>(ex.InnerException);
+        Assert.Equal(PostgresErrorCodes.UniqueViolation, postgres.SqlState);
+        Assert.Equal(indexName, postgres.ConstraintName);
     }
 
     private AppDbContext CreateContext() =>

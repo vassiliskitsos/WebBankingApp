@@ -4,8 +4,8 @@ using Microsoft.EntityFrameworkCore.Design;
 namespace WebBanking.Api.Data;
 
 // Used only by the `dotnet ef` tool, so it doesn't have to start Program.cs (which needs the JWT settings).
-// `migrations add` never connects, so the placeholder is enough there.
-// For `database update`, set ConnectionStrings__Default in the environment.
+// There is deliberately no fallback: a missing setting must stop `database update`
+// instead of quietly connecting to some default database.
 public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {
     public AppDbContext CreateDbContext(string[] args)
@@ -14,7 +14,8 @@ public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbConte
 
         if (string.IsNullOrWhiteSpace(connectionString))
         {
-            connectionString = "Host=localhost;Database=webbanking";
+            throw new InvalidOperationException(
+                "Set the ConnectionStrings__Default environment variable before running dotnet ef (see README section 8).");
         }
 
         var options = new DbContextOptionsBuilder<AppDbContext>()

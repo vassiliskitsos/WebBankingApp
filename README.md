@@ -313,7 +313,7 @@ docker compose down -v
 export ConnectionStrings__Default="Host=localhost;Port=5432;Database=webbanking;Username=webbanking;Password=<POSTGRES_PASSWORD>"
 ```
 
-Νέο migration μετά από αλλαγή στα entities: `dotnet ef migrations add <Όνομα> --project WebBanking.Api --output-dir Data/Migrations`.
+Νέο migration μετά από αλλαγή στα entities: `dotnet ef migrations add <Όνομα> --project WebBanking.Api --output-dir Data/Migrations`. Όλες οι εντολές `dotnet ef` χρειάζονται το `ConnectionStrings__Default`, αλλιώς σταματούν με μήνυμα σφάλματος.
 
 
 ```bash
