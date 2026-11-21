@@ -3,10 +3,6 @@ using WebBanking.Api.Repositories;
 using WebBanking.Api.Data.Entities;
 using Microsoft.AspNetCore.Identity;
 
-using Microsoft.AspNetCore.Identity;
-using WebBanking.Api.Data.Entities;
-using WebBanking.Api.Repositories;
-using WebBanking.Api.Services;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -19,16 +15,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-// KAN-16: Registration services
+// Authentication services
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRegistrationService, RegistrationService>();
+builder.Services.AddScoped<ILoginService, LoginService>();
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
-
-// KAN-16: Registration services
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<IRegistrationService, RegistrationService>();
-builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
-
 
 // Database. The connection string is read when the context is first resolved,
 // so hosts that never touch the database (e.g. the e2e tests) start without one.
