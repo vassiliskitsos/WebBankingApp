@@ -8,6 +8,15 @@ namespace WebBanking.Api.Repositories;
 public sealed class UserRepository(AppDbContext db)
     : IUserRepository
 {
+    public Task<User?> GetByUsernameAsync(
+        string username,
+        CancellationToken cancellationToken = default)
+    {
+        return db.Users.SingleOrDefaultAsync(
+            user => user.Username == username,
+            cancellationToken);
+    }
+
     public Task<bool> UsernameExistsAsync(
         string username,
         CancellationToken cancellationToken = default)

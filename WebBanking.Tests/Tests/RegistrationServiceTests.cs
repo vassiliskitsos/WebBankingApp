@@ -163,7 +163,15 @@ public sealed class RegistrationServiceTests
 
         public bool SimulateUnexpectedFailure { get; set; }
 
-        public Task<bool> UsernameExistsAsync(
+                public Task<User?> GetByUsernameAsync(
+            string username,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(
+                Users.SingleOrDefault(u => u.Username == username));
+        }
+
+public Task<bool> UsernameExistsAsync(
             string username,
             CancellationToken cancellationToken = default)
         {
