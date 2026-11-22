@@ -216,7 +216,7 @@ public sealed class ApiClientTests
         var nav = new TestNavigationManager("http://localhost:5018/login");
         var client = CreateClient(handler, tokenStore, nav);
 
-        var result = await client.GetAsync<JsonElement>("api/accounts/me");
+        var result = await client.GetAsync<JsonElement>("api/accounts/me", requiresAuth: false);
 
         Assert.False(result.IsSuccess);
         Assert.NotNull(result.Error);
@@ -237,7 +237,7 @@ public sealed class ApiClientTests
         var nav = new TestNavigationManager("http://localhost:5018/accounts");
         var client = CreateClient(handler, tokenStore, nav);
 
-        var result = await client.GetAsync<JsonElement>("api/accounts/me");
+        var result = await client.GetAsync<JsonElement>("api/accounts/me", requiresAuth: false);
 
         Assert.False(result.IsSuccess);
         Assert.NotNull(result.Error);
