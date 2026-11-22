@@ -20,7 +20,7 @@ builder.Services.AddOpenApi();
 const string ClientCorsPolicy = "ClientCorsPolicy";
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
-    .Get<string[]>() ?? ["http://localhost:5018", "https://localhost:7018"];
+    .Get<string[]>() ?? ["http://localhost:5018", "https://localhost:7198"];
 
 builder.Services.AddCors(options =>
 {

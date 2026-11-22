@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using WebBanking.Client;
@@ -14,7 +15,11 @@ builder.Services.AddScoped(_ => new HttpClient
     BaseAddress = new Uri(apiBaseUrl, UriKind.Absolute)
 });
 
+builder.Services.AddAuthorizationCore();
 builder.Services.AddScoped<IAuthTokenStore, AuthTokenStore>();
+builder.Services.AddScoped<JwtAuthenticationStateProvider>();
+builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
+    sp.GetRequiredService<JwtAuthenticationStateProvider>());
 builder.Services.AddScoped<IApiClient, ApiClient>();
 
 await builder.Build().RunAsync();

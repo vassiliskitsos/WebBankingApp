@@ -16,7 +16,7 @@ public interface IAuthTokenStore
 public sealed class AuthTokenStore(IJSRuntime jsRuntime) : IAuthTokenStore
 {
     private const string StorageKey = "webbanking.auth.session";
-    private bool _initialized;
+    private Task? _initializeTask;
 
     public AuthResponse? CurrentSession { get; private set; }
 
@@ -25,15 +25,14 @@ public sealed class AuthTokenStore(IJSRuntime jsRuntime) : IAuthTokenStore
             ? CurrentSession.Token
             : null;
 
-    public async Task InitializeAsync()
+    public Task InitializeAsync()
     {
-        if (_initialized)
-        {
-            return;
-        }
+        _initializeTask ??= RestoreSessionCoreAsync();
+        return _initializeTask;
+    }
 
-        _initialized = true;
-
+    private async Task RestoreSessionCoreAsync()
+    {
         try
         {
             var json = await jsRuntime.InvokeAsync<string?>(
@@ -56,6 +55,10 @@ public sealed class AuthTokenStore(IJSRuntime jsRuntime) : IAuthTokenStore
                 await ClearAsync();
             }
         }
+        catch (JsonException)
+        {
+            await ClearAsync();
+        }
         catch (JSException)
         {
             // Ignore JS interop errors when running outside a browser context.
@@ -67,7 +70,7 @@ public sealed class AuthTokenStore(IJSRuntime jsRuntime) : IAuthTokenStore
         ArgumentNullException.ThrowIfNull(session);
 
         CurrentSession = session;
-        _initialized = true;
+        _initializeTask = Task.CompletedTask;
 
         try
         {
