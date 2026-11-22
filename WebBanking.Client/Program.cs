@@ -8,7 +8,11 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5249";
+var defaultApiBaseUrl = builder.HostEnvironment.BaseAddress.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+    ? "https://localhost:7211"
+    : "http://localhost:5249";
+
+var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? defaultApiBaseUrl;
 
 builder.Services.AddScoped(_ => new HttpClient
 {
