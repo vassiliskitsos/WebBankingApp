@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -12,37 +11,37 @@ namespace WebBanking.Tests.Tests;
 
 public sealed class ApiClientTests
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-
     [Fact]
-    public async Task LoginAsync_ValidCredentials_SendsJsonReturnsAuthResponseAndStoresSession()
+    public async Task LoginAsync_ValidCredentials_SendsJsonPayloadAndStoresSession()
     {
+        string? capturedBody = null;
+        string? capturedContentType = null;
+
         var expectedResponse = new AuthResponse(
-            UserId: 7,
+            UserId: 12,
             Username: "theofania",
             Role: "Customer",
             Token: "jwt-token-123",
             ExpiresAtUtc: DateTime.UtcNow.AddHours(1));
 
-        string? capturedBody = null;
-        string? capturedContentType = null;
-        AuthenticationHeaderValue? capturedAuth = null;
-
-        var handler = new StubHttpMessageHandler(async (request, ct) =>
+        var handler = new StubHttpMessageHandler(async request =>
         {
+            Assert.Equal(HttpMethod.Post, request.Method);
+            Assert.Equal("http://localhost:5249/api/auth/login", request.RequestUri?.ToString());
+            Assert.Null(request.Headers.Authorization);
+
             capturedContentType = request.Content?.Headers.ContentType?.MediaType;
-            capturedAuth = request.Headers.Authorization;
-            capturedBody = await request.Content!.ReadAsStringAsync(ct);
+            capturedBody = await request.Content!.ReadAsStringAsync();
 
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = JsonContent.Create(expectedResponse, options: JsonOptions)
+                Content = JsonContent.Create(expectedResponse)
             };
         });
 
         var tokenStore = new InMemoryAuthTokenStore();
-        var navigation = new TestNavigationManager("http://localhost:5000/login");
-        var client = CreateClient(handler, tokenStore, navigation);
+        var nav = new TestNavigationManager("http://localhost:5018/login");
+        var client = CreateClient(handler, tokenStore, nav);
 
         var result = await client.LoginAsync(new LoginRequest
         {
@@ -52,185 +51,258 @@ public sealed class ApiClientTests
 
         Assert.True(result.IsSuccess);
         Assert.NotNull(result.Value);
-        Assert.Equal(expectedResponse.Token, result.Value.Token);
-        Assert.Equal("application/json", capturedContentType);
-        Assert.Null(capturedAuth);
-        Assert.Contains("\"username\":\"theofania\"", capturedBody);
+        Assert.Equal("theofania", result.Value.Username);
         Assert.Equal("jwt-token-123", tokenStore.Token);
-        Assert.Empty(navigation.NavigatedUris);
+        Assert.Equal("application/json", capturedContentType);
+        Assert.Contains("\"username\":\"theofania\"", capturedBody, StringComparison.Ordinal);
+        Assert.Contains("\"password\":\"Password123!\"", capturedBody, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task LoginAsync_InvalidCredentials_ReturnsUnauthorizedResultWithoutRedirect()
+    public async Task LoginAsync_UnauthorizedResponse_MapsApiErrorWithoutThrowing()
     {
-        var handler = new StubHttpMessageHandler((_, _) =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)
+        var handler = new StubHttpMessageHandler(_ =>
+        {
+            var apiError = new ApiError(
+                Code: "INVALID_CREDENTIALS",
+                Message: "Λάθος όνομα χρήστη ή κωδικός πρόσβασης.",
+                TraceId: "trace-1",
+                Details: null);
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)
             {
-                Content = JsonContent.Create(
-                    new { Message = "Λάθος όνομα χρήστη ή κωδικός πρόσβασης." },
-                    options: JsonOptions)
-            }));
+                Content = JsonContent.Create(apiError)
+            });
+        });
 
         var tokenStore = new InMemoryAuthTokenStore();
-        var navigation = new TestNavigationManager("http://localhost:5000/login");
-        var client = CreateClient(handler, tokenStore, navigation);
+        var nav = new TestNavigationManager("http://localhost:5018/login");
+        var client = CreateClient(handler, tokenStore, nav);
 
         var result = await client.LoginAsync(new LoginRequest
         {
-            Username = "theofania",
-            Password = "wrong"
+            Username = "wronguser",
+            Password = "WrongPassword1!"
         });
 
         Assert.False(result.IsSuccess);
-        Assert.Equal(ErrorType.Unauthorized, result.Error?.Type);
-        Assert.Equal("Λάθος όνομα χρήστη ή κωδικός πρόσβασης.", result.Error?.Message);
-        Assert.Null(tokenStore.Token);
-        Assert.Empty(navigation.NavigatedUris);
+        Assert.NotNull(result.Error);
+        Assert.Equal(ErrorType.Unauthorized, result.Error.Type);
+        Assert.Equal("Λάθος όνομα χρήστη ή κωδικός πρόσβασης.", result.Error.Message);
+        Assert.Equal("http://localhost:5018/login", nav.LastNavigatedUri);
     }
 
     [Fact]
-    public async Task GetAsync_ProtectedEndpointWithValidToken_AttachesBearerHeaderAndReturnsResult()
+    public async Task GetAsync_ProtectedEndpointWithStoredToken_AttachesBearerAuthorizationHeader()
     {
-        AuthenticationHeaderValue? capturedAuth = null;
+        string? authorizationHeader = null;
 
-        var handler = new StubHttpMessageHandler((request, _) =>
+        var handler = new StubHttpMessageHandler(request =>
         {
-            capturedAuth = request.Headers.Authorization;
+            authorizationHeader = request.Headers.Authorization?.ToString();
+
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = JsonContent.Create(new SampleDto("OK"), options: JsonOptions)
+                Content = JsonContent.Create(new { status = "ok" })
             });
         });
 
         var tokenStore = new InMemoryAuthTokenStore();
         await tokenStore.SetSessionAsync(new AuthResponse(
-            1,
-            "theofania",
-            "Customer",
-            "active-jwt-token",
-            DateTime.UtcNow.AddHours(1)));
+            UserId: 5,
+            Username: "theofania",
+            Role: "Customer",
+            Token: "secret-bearer-token",
+            ExpiresAtUtc: DateTime.UtcNow.AddHours(1)));
 
-        var navigation = new TestNavigationManager("http://localhost:5000/");
-        var client = CreateClient(handler, tokenStore, navigation);
+        var nav = new TestNavigationManager("http://localhost:5018/");
+        var client = CreateClient(handler, tokenStore, nav);
 
-        var result = await client.GetAsync<SampleDto>("api/accounts");
+        var result = await client.GetAsync<JsonElement>("api/accounts/me");
 
         Assert.True(result.IsSuccess);
-        Assert.Equal("OK", result.Value?.Status);
-        Assert.NotNull(capturedAuth);
-        Assert.Equal("Bearer", capturedAuth.Scheme);
-        Assert.Equal("active-jwt-token", capturedAuth.Parameter);
-        Assert.Empty(navigation.NavigatedUris);
+        Assert.Equal("Bearer secret-bearer-token", authorizationHeader);
     }
 
     [Fact]
-    public async Task GetAsync_ProtectedEndpointReturns401_ClearsSessionRedirectsToLoginAndReturnsFailure()
+    public async Task GetAsync_UnauthorizedOnProtectedEndpoint_ClearsSessionNotifiesProviderAndRedirectsToLogin()
     {
-        var handler = new StubHttpMessageHandler((_, _) =>
+        var handler = new StubHttpMessageHandler(_ =>
             Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)));
 
         var tokenStore = new InMemoryAuthTokenStore();
         await tokenStore.SetSessionAsync(new AuthResponse(
-            1,
-            "theofania",
-            "Customer",
-            "expired-on-server-token",
-            DateTime.UtcNow.AddHours(1)));
+            UserId: 5,
+            Username: "theofania",
+            Role: "Customer",
+            Token: "expired-or-revoked-token",
+            ExpiresAtUtc: DateTime.UtcNow.AddHours(1)));
 
-        var navigation = new TestNavigationManager("http://localhost:5000/dashboard");
-        var client = CreateClient(handler, tokenStore, navigation);
+        var authStateProvider = new JwtAuthenticationStateProvider(tokenStore);
+        var stateChangedNotified = false;
+        authStateProvider.AuthenticationStateChanged += _ => stateChangedNotified = true;
 
-        var result = await client.GetAsync<SampleDto>("api/accounts");
+        var nav = new TestNavigationManager("http://localhost:5018/accounts");
+        var client = CreateClient(handler, tokenStore, nav, authStateProvider);
+
+        var result = await client.GetAsync<JsonElement>("api/accounts/me");
 
         Assert.False(result.IsSuccess);
         Assert.Equal(ErrorType.Unauthorized, result.Error?.Type);
         Assert.Null(tokenStore.Token);
-        Assert.Equal(["/login"], navigation.NavigatedUris);
+        Assert.True(stateChangedNotified);
+        Assert.Equal("/login", nav.LastNavigatedUri);
     }
 
     [Fact]
-    public async Task GetAsync_ProtectedEndpointWithoutToken_RedirectsToLoginWithoutCallingServer()
+    public async Task GetAsync_LateUnauthorizedFromOlderToken_DoesNotClearNewerSession()
     {
-        var handlerCalled = false;
-        var handler = new StubHttpMessageHandler((_, _) =>
+        var tokenStore = new InMemoryAuthTokenStore();
+        await tokenStore.SetSessionAsync(new AuthResponse(
+            UserId: 5,
+            Username: "theofania",
+            Role: "Customer",
+            Token: "token-A",
+            ExpiresAtUtc: DateTime.UtcNow.AddHours(1)));
+
+        var handler = new StubHttpMessageHandler(async _ =>
         {
-            handlerCalled = true;
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+            // Simulate a newer login completing while the request with token-A is in flight.
+            await tokenStore.SetSessionAsync(new AuthResponse(
+                UserId: 5,
+                Username: "theofania",
+                Role: "Customer",
+                Token: "token-B",
+                ExpiresAtUtc: DateTime.UtcNow.AddHours(1)));
+
+            return new HttpResponseMessage(HttpStatusCode.Unauthorized);
         });
 
-        var tokenStore = new InMemoryAuthTokenStore();
-        var navigation = new TestNavigationManager("http://localhost:5000/dashboard");
-        var client = CreateClient(handler, tokenStore, navigation);
+        var authStateProvider = new JwtAuthenticationStateProvider(tokenStore);
+        var stateChangedNotified = false;
+        authStateProvider.AuthenticationStateChanged += _ => stateChangedNotified = true;
 
-        var result = await client.GetAsync<SampleDto>("api/accounts");
+        var nav = new TestNavigationManager("http://localhost:5018/accounts");
+        var client = CreateClient(handler, tokenStore, nav, authStateProvider);
+
+        var result = await client.GetAsync<JsonElement>("api/accounts/me");
 
         Assert.False(result.IsSuccess);
-        Assert.Equal(ErrorType.Unauthorized, result.Error?.Type);
-        Assert.False(handlerCalled);
-        Assert.Equal(["/login"], navigation.NavigatedUris);
+        Assert.Equal("token-B", tokenStore.Token);
+        Assert.False(stateChangedNotified);
+        Assert.Equal("http://localhost:5018/accounts", nav.LastNavigatedUri);
+    }
+
+    [Fact]
+    public async Task PostAsync_BodyFreeSuccess_DisposesHttpResponseMessage()
+    {
+        var trackingContent = new TrackingStringContent("{}");
+        var handler = new StubHttpMessageHandler(_ =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent)
+            {
+                Content = trackingContent
+            }));
+
+        var tokenStore = new InMemoryAuthTokenStore();
+        var nav = new TestNavigationManager("http://localhost:5018/");
+        var client = CreateClient(handler, tokenStore, nav);
+
+        var result = await client.PostAsync("api/test/ping", new { ok = true }, requiresAuth: false);
+
+        Assert.True(result.IsSuccess);
+        Assert.True(trackingContent.IsDisposed);
     }
 
     [Fact]
     public async Task GetAsync_NetworkException_ReturnsFailureResultWithoutThrowing()
     {
-        var handler = new StubHttpMessageHandler((_, _) =>
+        var handler = new StubHttpMessageHandler(_ =>
             throw new HttpRequestException("Connection refused"));
 
         var tokenStore = new InMemoryAuthTokenStore();
-        var navigation = new TestNavigationManager("http://localhost:5000/login");
-        var client = CreateClient(handler, tokenStore, navigation);
+        var nav = new TestNavigationManager("http://localhost:5018/login");
+        var client = CreateClient(handler, tokenStore, nav);
 
-        var result = await client.GetAsync<SampleDto>("api/health", requiresAuth: false);
+        var result = await client.GetAsync<JsonElement>("api/accounts/me");
 
         Assert.False(result.IsSuccess);
-        Assert.Equal(ErrorType.Unprocessable, result.Error?.Type);
-        Assert.False(string.IsNullOrWhiteSpace(result.Error?.Message));
+        Assert.NotNull(result.Error);
+        Assert.Equal(ErrorType.Unexpected, result.Error.Type);
+        Assert.Contains("Αδυναμία επικοινωνίας", result.Error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task GetAsync_MalformedJson_ReturnsUnprocessableResultWithoutThrowing()
+    public async Task GetAsync_InvalidJsonPayload_ReturnsFailureResultWithoutThrowing()
     {
-        var handler = new StubHttpMessageHandler((_, _) =>
+        var handler = new StubHttpMessageHandler(_ =>
             Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent("not-valid-json", Encoding.UTF8, "application/json")
             }));
 
         var tokenStore = new InMemoryAuthTokenStore();
-        var navigation = new TestNavigationManager("http://localhost:5000/login");
-        var client = CreateClient(handler, tokenStore, navigation);
+        var nav = new TestNavigationManager("http://localhost:5018/accounts");
+        var client = CreateClient(handler, tokenStore, nav);
 
-        var result = await client.GetAsync<SampleDto>("api/health", requiresAuth: false);
+        var result = await client.GetAsync<JsonElement>("api/accounts/me");
 
         Assert.False(result.IsSuccess);
-        Assert.Equal(ErrorType.Unprocessable, result.Error?.Type);
+        Assert.NotNull(result.Error);
+        Assert.Equal(ErrorType.Unexpected, result.Error.Type);
+    }
+
+    [Fact]
+    public async Task PostAsync_BadRequestWithNonJsonBody_MapsToValidationErrorWithoutThrowing()
+    {
+        var handler = new StubHttpMessageHandler(_ =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.BadRequest)
+            {
+                Content = new StringContent("Bad request plain text", Encoding.UTF8, "text/plain")
+            }));
+
+        var tokenStore = new InMemoryAuthTokenStore();
+        var nav = new TestNavigationManager("http://localhost:5018/login");
+        var client = CreateClient(handler, tokenStore, nav);
+
+        var result = await client.PostAsync("api/test", new { name = "x" }, requiresAuth: false);
+
+        Assert.False(result.IsSuccess);
+        Assert.NotNull(result.Error);
+        Assert.Equal(ErrorType.Validation, result.Error.Type);
     }
 
     private static ApiClient CreateClient(
         HttpMessageHandler handler,
         IAuthTokenStore tokenStore,
-        NavigationManager navigation)
+        NavigationManager navigationManager,
+        JwtAuthenticationStateProvider? authStateProvider = null)
     {
         var httpClient = new HttpClient(handler)
         {
-            BaseAddress = new Uri("http://localhost:5249/")
+            BaseAddress = new Uri("http://localhost:5249", UriKind.Absolute)
         };
 
-        return new ApiClient(httpClient, tokenStore, navigation);
+        return new ApiClient(httpClient, tokenStore, navigationManager, authStateProvider);
     }
 
-    private sealed record SampleDto(string Status);
+    private sealed class TrackingStringContent(string content)
+        : StringContent(content, Encoding.UTF8, "application/json")
+    {
+        public bool IsDisposed { get; private set; }
+
+        protected override void Dispose(bool disposing)
+        {
+            IsDisposed = true;
+            base.Dispose(disposing);
+        }
+    }
 
     private sealed class StubHttpMessageHandler(
-        Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler)
-        : HttpMessageHandler
+        Func<HttpRequestMessage, Task<HttpResponseMessage>> handler) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
-            CancellationToken cancellationToken)
-        {
-            return handler(request, cancellationToken);
-        }
+            CancellationToken cancellationToken) => handler(request);
     }
 
     private sealed class InMemoryAuthTokenStore : IAuthTokenStore
@@ -259,16 +331,18 @@ public sealed class ApiClientTests
 
     private sealed class TestNavigationManager : NavigationManager
     {
-        public List<string> NavigatedUris { get; } = [];
+        public string LastNavigatedUri { get; private set; }
 
         public TestNavigationManager(string initialUri)
         {
-            Initialize("http://localhost:5000/", initialUri);
+            Initialize("http://localhost:5018/", initialUri);
+            LastNavigatedUri = initialUri;
         }
 
-        protected override void NavigateToCore(string uri, NavigationOptions options)
+        protected override void NavigateToCore(string uri, bool forceLoad)
         {
-            NavigatedUris.Add(uri);
+            LastNavigatedUri = uri;
+            Uri = ToAbsoluteUri(uri).ToString();
         }
     }
 }

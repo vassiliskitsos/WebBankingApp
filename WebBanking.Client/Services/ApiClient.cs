@@ -35,7 +35,8 @@ public interface IApiClient
 public sealed class ApiClient(
     HttpClient httpClient,
     IAuthTokenStore tokenStore,
-    NavigationManager navigation) : IApiClient
+    NavigationManager navigationManager,
+    JwtAuthenticationStateProvider? authStateProvider = null) : IApiClient
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -59,30 +60,83 @@ public sealed class ApiClient(
         return result;
     }
 
-    public Task<Result<TResponse>> GetAsync<TResponse>(
+    public async Task<Result<TResponse>> GetAsync<TResponse>(
         string uri,
         bool requiresAuth = true,
         CancellationToken cancellationToken = default)
     {
-        return SendAsync<TResponse>(
-            () => new HttpRequestMessage(HttpMethod.Get, uri),
-            requiresAuth,
-            cancellationToken);
+        try
+        {
+            var (request, sentToken) = await CreateRequestAsync(
+                HttpMethod.Get,
+                uri,
+                requiresAuth);
+
+            using (request)
+            {
+                using var response = await httpClient.SendAsync(request, cancellationToken);
+                return await HandleTypedResponseAsync<TResponse>(
+                    response,
+                    sentToken,
+                    cancellationToken);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return Result<TResponse>.Fail(
+                new Error(ErrorType.Unexpected, "Το αίτημα ακυρώθηκε."));
+        }
+        catch (HttpRequestException)
+        {
+            return Result<TResponse>.Fail(
+                new Error(ErrorType.Unexpected, "Αδυναμία επικοινωνίας με τον διακομιστή. Ελέγξτε τη σύνδεσή σας."));
+        }
+        catch (Exception)
+        {
+            return Result<TResponse>.Fail(
+                new Error(ErrorType.Unexpected, "Παρουσιάστηκε απρόσμενο σφάλμα επικοινωνίας."));
+        }
     }
 
-    public Task<Result<TResponse>> PostAsync<TRequest, TResponse>(
+    public async Task<Result<TResponse>> PostAsync<TRequest, TResponse>(
         string uri,
         TRequest payload,
         bool requiresAuth = true,
         CancellationToken cancellationToken = default)
     {
-        return SendAsync<TResponse>(
-            () => new HttpRequestMessage(HttpMethod.Post, uri)
+        try
+        {
+            var (request, sentToken) = await CreateRequestAsync(
+                HttpMethod.Post,
+                uri,
+                requiresAuth);
+
+            using (request)
             {
-                Content = JsonContent.Create(payload, options: JsonOptions)
-            },
-            requiresAuth,
-            cancellationToken);
+                request.Content = JsonContent.Create(payload, options: JsonOptions);
+
+                using var response = await httpClient.SendAsync(request, cancellationToken);
+                return await HandleTypedResponseAsync<TResponse>(
+                    response,
+                    sentToken,
+                    cancellationToken);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return Result<TResponse>.Fail(
+                new Error(ErrorType.Unexpected, "Το αίτημα ακυρώθηκε."));
+        }
+        catch (HttpRequestException)
+        {
+            return Result<TResponse>.Fail(
+                new Error(ErrorType.Unexpected, "Αδυναμία επικοινωνίας με τον διακομιστή. Ελέγξτε τη σύνδεσή σας."));
+        }
+        catch (Exception)
+        {
+            return Result<TResponse>.Fail(
+                new Error(ErrorType.Unexpected, "Παρουσιάστηκε απρόσμενο σφάλμα επικοινωνίας."));
+        }
     }
 
     public async Task<Result> PostAsync<TRequest>(
@@ -91,176 +145,176 @@ public sealed class ApiClient(
         bool requiresAuth = true,
         CancellationToken cancellationToken = default)
     {
-        var response = await SendRawAsync(
-            () => new HttpRequestMessage(HttpMethod.Post, uri)
-            {
-                Content = JsonContent.Create(payload, options: JsonOptions)
-            },
-            requiresAuth,
-            cancellationToken);
-
-        return response.IsSuccess
-            ? Result.Ok()
-            : Result.Fail(response.Error!);
-    }
-
-    private async Task<Result<TResponse>> SendAsync<TResponse>(
-        Func<HttpRequestMessage> requestFactory,
-        bool requiresAuth,
-        CancellationToken cancellationToken)
-    {
-        var rawResult = await SendRawAsync(
-            requestFactory,
-            requiresAuth,
-            cancellationToken);
-
-        if (!rawResult.IsSuccess)
-        {
-            return Result<TResponse>.Fail(rawResult.Error!);
-        }
-
-        using var response = rawResult.Value!;
-
         try
         {
-            var data = await response.Content.ReadFromJsonAsync<TResponse>(
-                JsonOptions,
-                cancellationToken);
+            var (request, sentToken) = await CreateRequestAsync(
+                HttpMethod.Post,
+                uri,
+                requiresAuth);
 
-            if (data is null)
+            using (request)
             {
-                return Result<TResponse>.Fail(
-                    new Error(
-                        ErrorType.Unprocessable,
-                        "Η απόκριση του διακομιστή ήταν κενή."));
-            }
+                request.Content = JsonContent.Create(payload, options: JsonOptions);
 
-            return Result<TResponse>.Ok(data);
+                using var response = await httpClient.SendAsync(request, cancellationToken);
+                if (response.IsSuccessStatusCode)
+                {
+                    return Result.Success();
+                }
+
+                var error = await HandleErrorResponseAsync(
+                    response,
+                    sentToken,
+                    cancellationToken);
+                return Result.Fail(error);
+            }
         }
-        catch (Exception ex) when (ex is JsonException or NotSupportedException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            return Result<TResponse>.Fail(
-                new Error(
-                    ErrorType.Unprocessable,
-                    "Μη έγκυρη μορφή δεδομένων από τον διακομιστή."));
+            return Result.Fail(
+                new Error(ErrorType.Unexpected, "Το αίτημα ακυρώθηκε."));
+        }
+        catch (HttpRequestException)
+        {
+            return Result.Fail(
+                new Error(ErrorType.Unexpected, "Αδυναμία επικοινωνίας με τον διακομιστή. Ελέγξτε τη σύνδεσή σας."));
+        }
+        catch (Exception)
+        {
+            return Result.Fail(
+                new Error(ErrorType.Unexpected, "Παρουσιάστηκε απρόσμενο σφάλμα επικοινωνίας."));
         }
     }
 
-    private async Task<Result<HttpResponseMessage>> SendRawAsync(
-        Func<HttpRequestMessage> requestFactory,
-        bool requiresAuth,
-        CancellationToken cancellationToken)
+    private async Task<(HttpRequestMessage Request, string? SentToken)> CreateRequestAsync(
+        HttpMethod method,
+        string uri,
+        bool requiresAuth)
     {
-        using var request = requestFactory();
-        request.Headers.Accept.Add(
-            new MediaTypeWithQualityHeaderValue("application/json"));
+        var request = new HttpRequestMessage(method, uri);
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+        string? sentToken = null;
 
         if (requiresAuth)
         {
             await tokenStore.InitializeAsync();
+            sentToken = tokenStore.Token;
 
-            var token = tokenStore.Token;
-            if (string.IsNullOrWhiteSpace(token))
+            if (!string.IsNullOrWhiteSpace(sentToken))
             {
-                await RedirectToLoginAsync();
-                return Result<HttpResponseMessage>.Fail(
-                    new Error(
-                        ErrorType.Unauthorized,
-                        "Η συνεδρία σας έχει λήξει. Παρακαλούμε συνδεθείτε ξανά."));
+                request.Headers.Authorization =
+                    new AuthenticationHeaderValue("Bearer", sentToken);
             }
-
-            request.Headers.Authorization =
-                new AuthenticationHeaderValue("Bearer", token);
         }
 
-        HttpResponseMessage response;
-        try
-        {
-            response = await httpClient.SendAsync(request, cancellationToken);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception)
-        {
-            return Result<HttpResponseMessage>.Fail(
-                new Error(
-                    ErrorType.Unprocessable,
-                    "Αδυναμία επικοινωνίας με τον διακομιστή. Ελέγξτε τη σύνδεσή σας."));
-        }
-
-        if (response.IsSuccessStatusCode)
-        {
-            return Result<HttpResponseMessage>.Ok(response);
-        }
-
-        using (response)
-        {
-            var error = await MapErrorAsync(response, cancellationToken);
-
-            if (response.StatusCode == HttpStatusCode.Unauthorized && requiresAuth)
-            {
-                await RedirectToLoginAsync();
-            }
-
-            return Result<HttpResponseMessage>.Fail(error);
-        }
+        return (request, sentToken);
     }
 
-    private async Task RedirectToLoginAsync()
-    {
-        await tokenStore.ClearAsync();
-
-        var currentPath = navigation.ToBaseRelativePath(navigation.Uri);
-        if (!currentPath.StartsWith("login", StringComparison.OrdinalIgnoreCase))
-        {
-            navigation.NavigateTo("/login");
-        }
-    }
-
-    private static async Task<Error> MapErrorAsync(
+    private async Task<Result<TResponse>> HandleTypedResponseAsync<TResponse>(
         HttpResponseMessage response,
+        string? sentToken,
         CancellationToken cancellationToken)
     {
-        var errorType = response.StatusCode switch
+        if (response.IsSuccessStatusCode)
+        {
+            try
+            {
+                var data = await response.Content.ReadFromJsonAsync<TResponse>(
+                    JsonOptions,
+                    cancellationToken);
+
+                if (data is null)
+                {
+                    return Result<TResponse>.Fail(
+                        new Error(ErrorType.Unexpected, "Κενή απάντηση από τον διακομιστή."));
+                }
+
+                return Result<TResponse>.Success(data);
+            }
+            catch (JsonException)
+            {
+                return Result<TResponse>.Fail(
+                    new Error(ErrorType.Unexpected, "Μη έγκυρη μορφή δεδομένων από τον διακομιστή."));
+            }
+        }
+
+        var error = await HandleErrorResponseAsync(
+            response,
+            sentToken,
+            cancellationToken);
+        return Result<TResponse>.Fail(error);
+    }
+
+    private async Task<Error> HandleErrorResponseAsync(
+        HttpResponseMessage response,
+        string? sentToken,
+        CancellationToken cancellationToken)
+    {
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            await tokenStore.InitializeAsync();
+
+            var isSameActiveToken =
+                !string.IsNullOrWhiteSpace(sentToken) &&
+                string.Equals(tokenStore.Token, sentToken, StringComparison.Ordinal);
+
+            if (isSameActiveToken || string.IsNullOrWhiteSpace(tokenStore.Token))
+            {
+                if (isSameActiveToken)
+                {
+                    await tokenStore.ClearAsync();
+                    authStateProvider?.NotifyAuthStateChanged();
+                }
+
+                if (!navigationManager.Uri.EndsWith("/login", StringComparison.OrdinalIgnoreCase))
+                {
+                    navigationManager.NavigateTo("/login");
+                }
+            }
+        }
+
+        var rawBody = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (!string.IsNullOrWhiteSpace(rawBody))
+        {
+            try
+            {
+                var apiError = JsonSerializer.Deserialize<ApiError>(rawBody, JsonOptions);
+                if (apiError is not null && !string.IsNullOrWhiteSpace(apiError.Message))
+                {
+                    return new Error(MapStatusCodeToErrorType(response.StatusCode), apiError.Message);
+                }
+            }
+            catch (JsonException)
+            {
+                // Ignore non-JSON error payloads (e.g. HTML/plain text) and use fallback message.
+            }
+        }
+
+        return new Error(
+            MapStatusCodeToErrorType(response.StatusCode),
+            GetFallbackErrorMessage(response.StatusCode));
+    }
+
+    private static ErrorType MapStatusCodeToErrorType(HttpStatusCode statusCode) =>
+        statusCode switch
         {
             HttpStatusCode.BadRequest => ErrorType.Validation,
             HttpStatusCode.Unauthorized => ErrorType.Unauthorized,
+            HttpStatusCode.Forbidden => ErrorType.Forbidden,
             HttpStatusCode.NotFound => ErrorType.NotFound,
             HttpStatusCode.Conflict => ErrorType.Conflict,
-            _ => ErrorType.Unprocessable
+            _ => ErrorType.Unexpected
         };
 
-        string? message = null;
-
-        try
+    private static string GetFallbackErrorMessage(HttpStatusCode statusCode) =>
+        statusCode switch
         {
-            var payload = await response.Content.ReadFromJsonAsync<ApiErrorPayload>(
-                JsonOptions,
-                cancellationToken);
-
-            message = payload?.Message ?? payload?.Title;
-        }
-        catch (Exception)
-        {
-            // Fallback to default status message when body is empty or non-JSON.
-        }
-
-        if (string.IsNullOrWhiteSpace(message))
-        {
-            message = response.StatusCode switch
-            {
-                HttpStatusCode.Unauthorized => "Λάθος όνομα χρήστη ή κωδικός πρόσβασης.",
-                HttpStatusCode.BadRequest => "Μη έγκυρα στοιχεία αιτήματος.",
-                HttpStatusCode.NotFound => "Ο πόρος δεν βρέθηκε.",
-                HttpStatusCode.Conflict => "Υπάρχει σύγκρουση δεδομένων.",
-                _ => "Παρουσιάστηκε απρόσμενο σφάλμα στον διακομιστή."
-            };
-        }
-
-        return new Error(errorType, message);
-    }
-
-    private sealed record ApiErrorPayload(string? Message, string? Title);
+            HttpStatusCode.BadRequest => "Μη έγκυρα στοιχεία αιτήματος.",
+            HttpStatusCode.Unauthorized => "Η συνεδρία σας έληξε ή τα στοιχεία σύνδεσης είναι λανθασμένα.",
+            HttpStatusCode.Forbidden => "Δεν έχετε δικαίωμα πρόσβασης.",
+            HttpStatusCode.NotFound => "Ο ζητούμενος πόρος δεν βρέθηκε.",
+            HttpStatusCode.Conflict => "Παρουσιάστηκε διένεξη δεδομένων.",
+            _ => "Παρουσιάστηκε σφάλμα στον διακομιστή. Δοκιμάστε ξανά αργότερα."
+        };
 }
