@@ -63,15 +63,9 @@ public sealed class ApiClientTests
     {
         var handler = new StubHttpMessageHandler(_ =>
         {
-            var apiError = new ApiError(
-                Code: "INVALID_CREDENTIALS",
-                Message: "Λάθος όνομα χρήστη ή κωδικός πρόσβασης.",
-                TraceId: "trace-1",
-                Details: null);
-
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)
             {
-                Content = JsonContent.Create(apiError)
+                Content = JsonContent.Create(new { message = "Λάθος όνομα χρήστη ή κωδικός πρόσβασης." })
             });
         });
 
@@ -167,7 +161,6 @@ public sealed class ApiClientTests
 
         var handler = new StubHttpMessageHandler(async _ =>
         {
-            // Simulate a newer login completing while the request with token-A is in flight.
             await tokenStore.SetSessionAsync(new AuthResponse(
                 UserId: 5,
                 Username: "theofania",
@@ -227,7 +220,7 @@ public sealed class ApiClientTests
 
         Assert.False(result.IsSuccess);
         Assert.NotNull(result.Error);
-        Assert.Equal(ErrorType.Unexpected, result.Error.Type);
+        Assert.Equal(ErrorType.Unprocessable, result.Error.Type);
         Assert.Contains("Αδυναμία επικοινωνίας", result.Error.Message, StringComparison.Ordinal);
     }
 
@@ -248,7 +241,7 @@ public sealed class ApiClientTests
 
         Assert.False(result.IsSuccess);
         Assert.NotNull(result.Error);
-        Assert.Equal(ErrorType.Unexpected, result.Error.Type);
+        Assert.Equal(ErrorType.Unprocessable, result.Error.Type);
     }
 
     [Fact]
