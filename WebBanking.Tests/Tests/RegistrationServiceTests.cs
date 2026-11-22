@@ -28,13 +28,69 @@ public sealed class RegistrationServiceTests
     {
         var repository = new FakeUserRepository();
         var service = CreateService(repository);
+        var request = ValidRequest();
 
-        var result = await service.RegisterAsync(ValidRequest());
+        var result = await service.RegisterAsync(request);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(1, result.Value);
         Assert.Null(result.Error);
-        Assert.Single(repository.Users);
+
+        var saved = Assert.Single(repository.Users);
+        Assert.Equal(request.Username, saved.Username);
+    }
+
+    [Theory]
+    [InlineData("abc", "123456")]
+    [InlineData("user_with_50_chars_1234567890123456789012345678901", "ValidPass1!")]
+    public async Task Register_BoundaryValidInputs_ReturnsSuccess(
+        string username,
+        string password)
+    {
+        var repository = new FakeUserRepository();
+        var service = CreateService(repository);
+
+        var result = await service.RegisterAsync(
+            new RegisterRequest
+            {
+                Username = username,
+                Password = password
+            });
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, result.Value);
+
+        var saved = Assert.Single(repository.Users);
+        Assert.Equal(username, saved.Username);
+        Assert.Equal(Role.Customer, saved.Role);
+    }
+
+    [Fact]
+    public async Task Register_MultipleValidUsers_AssignsSequentialIdsAndDistinctHashes()
+    {
+        var repository = new FakeUserRepository();
+        var service = CreateService(repository);
+
+        var first = await service.RegisterAsync(new RegisterRequest
+        {
+            Username = "alice",
+            Password = "SamePassword123!"
+        });
+
+        var second = await service.RegisterAsync(new RegisterRequest
+        {
+            Username = "bob",
+            Password = "SamePassword123!"
+        });
+
+        Assert.True(first.IsSuccess);
+        Assert.Equal(1, first.Value);
+        Assert.True(second.IsSuccess);
+        Assert.Equal(2, second.Value);
+        Assert.Equal(2, repository.Users.Count);
+        Assert.NotEqual(
+            repository.Users[0].PasswordHash,
+            repository.Users[1].PasswordHash);
     }
 
     [Fact]
@@ -88,7 +144,9 @@ public sealed class RegistrationServiceTests
         Assert.True(first.IsSuccess);
         Assert.False(second.IsSuccess);
         Assert.Equal(ErrorType.Conflict, second.Error?.Type);
+        Assert.False(string.IsNullOrWhiteSpace(second.Error?.Message));
         Assert.Single(repository.Users);
+        Assert.Equal(1, repository.CreateCalls);
     }
 
     [Fact]
@@ -105,15 +163,19 @@ public sealed class RegistrationServiceTests
 
         Assert.False(result.IsSuccess);
         Assert.Equal(ErrorType.Conflict, result.Error?.Type);
+        Assert.False(string.IsNullOrWhiteSpace(result.Error?.Message));
         Assert.Empty(repository.Users);
     }
 
     [Theory]
     [InlineData("", "SecurePassword123!")]
+    [InlineData("   ", "SecurePassword123!")]
     [InlineData("ab", "SecurePassword123!")]
-    [InlineData("sara", "12345")]
+    [InlineData("user_exceeding_50_chars_12345678901234567890123456789", "SecurePassword123!")]
     [InlineData("sara", "")]
-    public async Task Register_InvalidInput_ReturnsValidationError(
+    [InlineData("sara", "     ")]
+    [InlineData("sara", "12345")]
+    public async Task Register_InvalidInput_ReturnsValidationErrorWithoutCallingRepository(
         string username,
         string password)
     {
@@ -129,7 +191,10 @@ public sealed class RegistrationServiceTests
 
         Assert.False(result.IsSuccess);
         Assert.Equal(ErrorType.Validation, result.Error?.Type);
+        Assert.False(string.IsNullOrWhiteSpace(result.Error?.Message));
         Assert.Empty(repository.Users);
+        Assert.Equal(0, repository.UsernameExistsCalls);
+        Assert.Equal(0, repository.CreateCalls);
     }
 
     [Fact]
@@ -163,7 +228,11 @@ public sealed class RegistrationServiceTests
 
         public bool SimulateUnexpectedFailure { get; set; }
 
-                public Task<User?> GetByUsernameAsync(
+        public int UsernameExistsCalls { get; private set; }
+
+        public int CreateCalls { get; private set; }
+
+        public Task<User?> GetByUsernameAsync(
             string username,
             CancellationToken cancellationToken = default)
         {
@@ -171,10 +240,11 @@ public sealed class RegistrationServiceTests
                 Users.SingleOrDefault(u => u.Username == username));
         }
 
-public Task<bool> UsernameExistsAsync(
+        public Task<bool> UsernameExistsAsync(
             string username,
             CancellationToken cancellationToken = default)
         {
+            UsernameExistsCalls++;
             return Task.FromResult(
                 Users.Any(u => u.Username == username));
         }
@@ -183,6 +253,8 @@ public Task<bool> UsernameExistsAsync(
             User user,
             CancellationToken cancellationToken = default)
         {
+            CreateCalls++;
+
             if (SimulateUnexpectedFailure)
             {
                 throw new InvalidOperationException(
