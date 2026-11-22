@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../WebBanking.Api/WebBanking.Api.csproj" />
+    <ProjectReference Include="..\WebBanking.Client\WebBanking.Client.csproj" />
   </ItemGroup>
 
 </Project>
