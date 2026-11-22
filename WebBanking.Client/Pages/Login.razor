@@ -3,6 +3,7 @@
 @using WebBanking.Client.Services
 @using WebBanking.Contracts.Auth
 @inject IApiClient ApiClient
+@inject JwtAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 
 <PageTitle>Σύνδεση - WebBanking</PageTitle>
@@ -123,6 +124,7 @@
                 return;
             }
 
+            AuthStateProvider.NotifyAuthStateChanged();
             Navigation.NavigateTo("/");
         }
         catch (Exception)
