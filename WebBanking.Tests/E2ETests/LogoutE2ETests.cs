@@ -35,6 +35,7 @@ public sealed class LogoutE2ETests
         await Assertions.Expect(page.GetByRole(AriaRole.Navigation).GetByRole(AriaRole.Link, new() { Name = "Σύνδεση", Exact = true }))
             .ToBeVisibleAsync(new() { Timeout = 30_000 });
         Assert.Null(await ReadStoredSessionAsync(page));
+        await page.WaitForURLAsync("**/login", new() { Timeout = 30_000 });
 
         await page.GotoAsync($"{_fixture.ApiBaseUrl}/accounts");
 
