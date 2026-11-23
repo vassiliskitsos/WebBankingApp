@@ -119,6 +119,39 @@ public sealed class ApiClientTests
     }
 
     [Fact]
+    public async Task GetAsync_AfterSignOut_SendsNoRequestWithBearerToken()
+    {
+        var requestCount = 0;
+        var handler = new StubHttpMessageHandler(_ =>
+        {
+            requestCount++;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(new { status = "ok" })
+            });
+        });
+
+        var tokenStore = new InMemoryAuthTokenStore();
+        await tokenStore.SetSessionAsync(new AuthResponse(
+            UserId: 5,
+            Username: "theofania",
+            Role: "Customer",
+            Token: "secret-bearer-token",
+            ExpiresAtUtc: DateTime.UtcNow.AddHours(1)));
+
+        var authStateProvider = new JwtAuthenticationStateProvider(tokenStore);
+        var nav = new TestNavigationManager("http://localhost:5018/accounts");
+        var client = CreateClient(handler, tokenStore, nav, authStateProvider);
+
+        await authStateProvider.SignOutAsync();
+        var result = await client.GetAsync<JsonElement>("api/accounts/me");
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(0, requestCount);
+        Assert.Null(tokenStore.Token);
+    }
+
+    [Fact]
     public async Task GetAsync_UnauthorizedOnProtectedEndpoint_ClearsSessionNotifiesProviderAndRedirectsToLogin()
     {
         var handler = new StubHttpMessageHandler(_ =>

@@ -171,7 +171,7 @@ sequenceDiagram
 - **RBAC:** ρόλοι `Customer` και `Admin`. Τα endpoints `/api/admin/*` έχουν `[Authorize(Roles = "Admin")]`.
 - **Ownership:** το `userId` παίρνεται από τα claims του JWT, όχι από το body του request.
 - **Frontend:** το `AuthenticationStateProvider` και η απόκρυψη μενού ανά ρόλο είναι μόνο για την εμφάνιση. Η προστασία είναι στο backend.
-- **Logout (US-08):** το token διαγράφεται από τον client.
+- **Logout (US-08):** το token διαγράφεται από το `sessionStorage` μέσω JS interop και ο χρήστης μεταφέρεται στη σύνδεση (`/login`). Το Bearer header δεν στέλνεται πλέον. Περιορισμοί: το JWT είναι stateless, άρα ένα token που έχει ήδη αντιγραφεί παραμένει έγκυρο μέχρι τη λήξη του. Το logout δεν επηρεάζει άλλα tabs, γιατί το `sessionStorage` είναι ανά tab.
 
 ---
 
@@ -246,7 +246,7 @@ erDiagram
 - Σελίδες: Σύνδεση / Εγγραφή, Λογαριασμοί, Μεταφορά, Ιστορικό, Δικαιούχοι, Διαχείριση (μόνο `Admin`).
 - `ApiClient`: ένα typed `HttpClient` που προσθέτει το JWT, επιστρέφει `Result<T>` και στέλνει τον χρήστη στη σύνδεση σε `401`.
 - DTOs (requests και responses) σε κοινό class library `WebBanking.Contracts/`, που αναφέρεται από το frontend και το backend. Έτσι τα συμβόλαια API δεν αποκλίνουν.
-- Το JWT αποθηκεύεται σε `localStorage` μέσω JS interop. Βλ. ανοιχτά θέματα.
+- Το JWT αποθηκεύεται σε `sessionStorage` (κλειδί `webbanking.auth.session`) μέσω JS interop. Είναι ανά tab. Βλ. ανοιχτά θέματα.
 
 ---
 
@@ -453,7 +453,8 @@ dotnet test WebBanking.Tests --filter "FullyQualifiedName~E2ETests"
 | Θέμα | Τρέχουσα πρόταση | Σχόλιο |
 |---|---|---|
 | Ρόλοι | `Role` ως enum στο `User` | Με δύο ρόλους, το enum αρκεί. |
-| Αποθήκευση JWT στον browser | `localStorage` μέσω JS interop | Ευάλωτο σε XSS. Να αποφασιστεί από την ομάδα. |
+| Αποθήκευση JWT στον browser | `sessionStorage` μέσω JS interop | Ανά tab. Παραμένει ευάλωτο σε XSS. Να αποφασιστεί από την ομάδα. |
+| Ανάκληση JWT μετά το logout | Όχι στη φάση 1 | Το JWT είναι stateless. Μετά το logout, ένα αντιγραμμένο token ισχύει μέχρι τη λήξη του. Η ανάκληση θα απαιτούσε denylist ή token version. |
 | Refresh tokens | Όχι στη φάση 1 | Το JWT λήγει μετά `JWT_EXPIRES_MINUTES`. |
 | Νόμισμα | Ένα νόμισμα ανά λογαριασμό, μεταφορά μόνο στο ίδιο νόμισμα | Η μετατροπή νομισμάτων είναι εκτός πεδίου. |
 | Μεταφορές εκτός συστήματος | Εκτός πεδίου | Το `ToAccountId` είναι ξένο κλειδί. |
