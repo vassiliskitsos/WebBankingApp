@@ -20,6 +20,7 @@ public sealed class AccountsPageRenderTests
     public void Render_WhileRequestPending_ShowsLoadingState()
     {
         using var ctx = new BunitContext();
+        ctx.AddAuthorization().SetAuthorized("probeuser");
         ctx.Services.AddScoped<IApiClient>(_ => new StubApiClient(
             () => new TaskCompletionSource<Result<IReadOnlyList<AccountDto>>>().Task));
 
@@ -32,6 +33,7 @@ public sealed class AccountsPageRenderTests
     public void Render_WithAccounts_ShowsIbanBalanceAndCurrency()
     {
         using var ctx = new BunitContext();
+        ctx.AddAuthorization().SetAuthorized("probeuser");
         ctx.Services.AddScoped<IApiClient>(_ => new StubApiClient(() =>
             Task.FromResult(Result<IReadOnlyList<AccountDto>>.Ok([Account]))));
 
@@ -48,6 +50,7 @@ public sealed class AccountsPageRenderTests
     public void Render_WithNoAccounts_ShowsEmptyState()
     {
         using var ctx = new BunitContext();
+        ctx.AddAuthorization().SetAuthorized("probeuser");
         ctx.Services.AddScoped<IApiClient>(_ => new StubApiClient(() =>
             Task.FromResult(Result<IReadOnlyList<AccountDto>>.Ok([]))));
 
@@ -61,6 +64,7 @@ public sealed class AccountsPageRenderTests
     public void Render_WhenUnauthorized_ShowsSessionExpiredWithoutRetry()
     {
         using var ctx = new BunitContext();
+        ctx.AddAuthorization().SetAuthorized("probeuser");
         ctx.Services.AddScoped<IApiClient>(_ => new StubApiClient(() =>
             Task.FromResult(Result<IReadOnlyList<AccountDto>>.Fail(
                 new Error(ErrorType.Unauthorized, "Unauthorized")))));
@@ -75,6 +79,7 @@ public sealed class AccountsPageRenderTests
     public void Render_WhenRequestFails_ShowsErrorWithRetry()
     {
         using var ctx = new BunitContext();
+        ctx.AddAuthorization().SetAuthorized("probeuser");
         ctx.Services.AddScoped<IApiClient>(_ => new StubApiClient(() =>
             Task.FromResult(Result<IReadOnlyList<AccountDto>>.Fail(
                 new Error(ErrorType.Unprocessable, "Σφάλμα διακομιστή")))));
@@ -83,6 +88,38 @@ public sealed class AccountsPageRenderTests
 
         cut.WaitForState(() => cut.Markup.Contains("Σφάλμα διακομιστή"));
         Assert.NotNull(cut.Find("button"));
+    }
+
+    [Fact]
+    public void SignIn_WhileOnAccountsPage_LoadsAccounts()
+    {
+        using var ctx = new BunitContext();
+        var auth = ctx.AddAuthorization();
+        auth.SetNotAuthorized();
+        ctx.Services.AddScoped<IApiClient>(_ => new StubApiClient(() =>
+            Task.FromResult(Result<IReadOnlyList<AccountDto>>.Ok([Account]))));
+
+        var cut = ctx.Render<AccountsPage>();
+        auth.SetAuthorized("probeuser");
+
+        cut.WaitForElement("tbody tr");
+        Assert.Contains(Account.Iban, cut.Markup);
+    }
+
+    [Fact]
+    public void SignIn_WhenLoadThrows_ShowsErrorInsteadOfSpinner()
+    {
+        using var ctx = new BunitContext();
+        var auth = ctx.AddAuthorization();
+        auth.SetNotAuthorized();
+        ctx.Services.AddScoped<IApiClient>(_ => new StubApiClient(
+            () => throw new InvalidOperationException("boom")));
+
+        var cut = ctx.Render<AccountsPage>();
+        auth.SetAuthorized("probeuser");
+
+        cut.WaitForState(() => cut.Markup.Contains("Δεν ήταν δυνατή η φόρτωση"));
+        Assert.DoesNotContain("Φόρτωση λογαριασμών", cut.Markup);
     }
 
     private sealed class StubApiClient(

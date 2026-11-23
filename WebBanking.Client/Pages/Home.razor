@@ -1,5 +1,7 @@
 ﻿@page "/"
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Logging
+@implements IDisposable
 
 <PageTitle>Home</PageTitle>
 
@@ -43,22 +45,41 @@
 </div>
 
 @code {
-    [CascadingParameter]
-    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
-
     private string? _userName;
+
+    [Inject]
+    private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
+
+    [Inject]
+    private ILogger<Home> Logger { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
-        if (AuthenticationStateTask is null)
-        {
-            return;
-        }
+        AuthStateProvider.AuthenticationStateChanged += OnAuthenticationStateChangedAsync;
+        await ReadUserNameAsync();
+    }
 
-        var state = await AuthenticationStateTask;
-        if (state.User.Identity?.IsAuthenticated == true)
+    private async void OnAuthenticationStateChangedAsync(Task<AuthenticationState> stateTask)
+    {
+        try
         {
-            _userName = state.User.Identity.Name;
+            await ReadUserNameAsync();
+            await InvokeAsync(StateHasChanged);
         }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to refresh the home page after an authentication state change.");
+        }
+    }
+
+    private async Task ReadUserNameAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        _userName = state.User.Identity?.IsAuthenticated == true ? state.User.Identity.Name : null;
+    }
+
+    public void Dispose()
+    {
+        AuthStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChangedAsync;
     }
 }

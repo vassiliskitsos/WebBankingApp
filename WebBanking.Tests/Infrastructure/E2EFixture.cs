@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Playwright;
@@ -64,6 +65,10 @@ public sealed class E2EFixture : IAsyncLifetime
 
         using var client = _api.CreateClient();
         ApiBaseUrl = client.BaseAddress!.ToString().TrimEnd('/');
+
+        // the published client reads its API address from appsettings.json, so point it at this server
+        await File.WriteAllTextAsync(Path.Combine(clientFolder, "appsettings.json"),
+            JsonSerializer.Serialize(new { ApiBaseUrl }));
 
         // downloads chromium if not installed
         var exitCode = await Task.Run(() => Microsoft.Playwright.Program.Main(["install", "chromium"]));
