@@ -1,11 +1,21 @@
 using System.Diagnostics;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Playwright;
+using Testcontainers.PostgreSql;
+using WebBanking.Api.Data;
 
 namespace WebBanking.Tests.Infrastructure;
 
-// end to end tests
+// end to end tests: real API, real PostgreSQL (Testcontainers), real browser
 public sealed class E2EFixture : IAsyncLifetime
 {
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16")
+        .WithDatabase("webbanking_e2e")
+        .WithUsername("webbanking")
+        .WithPassword("test-only-password")
+        .Build();
+
     private E2EApiFactory? _api;
     private IPlaywright? _playwright;
     private string? _publishFolder;
@@ -38,12 +48,19 @@ public sealed class E2EFixture : IAsyncLifetime
 
     private async Task StartAsync()
     {
+        await _postgres.StartAsync();
+
         _publishFolder = Path.Combine(Path.GetTempPath(), $"webbanking-e2e-client-{Guid.NewGuid():N}");
         var clientFolder = await Task.Run(() => PublishClient(_publishFolder));
 
-        _api = new E2EApiFactory(clientFolder);
+        _api = new E2EApiFactory(clientFolder, _postgres.GetConnectionString());
         _api.UseKestrel(0);
         _api.StartServer();
+
+        await using (var scope = _api.Services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+        }
 
         using var client = _api.CreateClient();
         ApiBaseUrl = client.BaseAddress!.ToString().TrimEnd('/');
@@ -77,6 +94,8 @@ public sealed class E2EFixture : IAsyncLifetime
                 await _api.DisposeAsync();
                 _api = null;
             }
+
+            await _postgres.DisposeAsync();
         }
         finally
         {

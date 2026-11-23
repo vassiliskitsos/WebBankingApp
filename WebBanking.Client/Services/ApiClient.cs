@@ -149,6 +149,13 @@ public sealed class ApiClient(
                     ErrorType.Unprocessable,
                     "Μη έγκυρη μορφή δεδομένων από τον διακομιστή."));
         }
+        catch (Exception ex) when (ex is HttpRequestException or IOException)
+        {
+            return Result<TResponse>.Fail(
+                new Error(
+                    ErrorType.Unprocessable,
+                    "Η σύνδεση με τον διακομιστή διακόπηκε."));
+        }
     }
 
     private async Task<Result<HttpResponseMessage>> SendRawAsync(

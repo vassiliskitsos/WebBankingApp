@@ -3,17 +3,27 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 
 namespace WebBanking.Tests.Infrastructure;
 
-public sealed class E2EApiFactory(string clientFolder) : WebApplicationFactory<Program>
+public sealed class E2EApiFactory(string clientFolder, string connectionString) : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("JWT_SECRET", "integration-tests-only-secret-key-32b!");
         builder.UseSetting("JWT_ISSUER", "WebBankingApp.Tests");
+        builder.UseSetting("JWT_EXPIRES_MINUTES", "60");
+
+        builder.ConfigureAppConfiguration((_, config) =>
+        {
+            config.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:Default"] = connectionString
+            });
+        });
 
         builder.ConfigureTestServices(services =>
             services.AddTransient<IStartupFilter>(_ => new ServeClientFilesFilter(clientFolder)));
