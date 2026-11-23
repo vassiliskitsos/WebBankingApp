@@ -8,6 +8,7 @@ using WebBanking.Api.Data;
 using WebBanking.Api.Data.Entities;
 using WebBanking.Api.Services;
 using WebBanking.Contracts.Accounts;
+using WebBanking.Contracts.Auth;
 using WebBanking.Tests.Infrastructure;
 
 namespace WebBanking.Tests.Tests;
@@ -107,6 +108,134 @@ public sealed class AccountsApiTests
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+    [Fact]
+    public async Task GetAccounts_TwoCustomers_EachSeesOnlyOwnAccounts()
+    {
+        var alice = await CreateUserAsync(Role.Customer);
+        var bob = await CreateUserAsync(Role.Customer);
+
+        var aliceAccounts = new[]
+        {
+            await CreateAccountAsync(alice.Id, 10m),
+            await CreateAccountAsync(alice.Id, 20m)
+        };
+        var bobAccounts = new[]
+        {
+            await CreateAccountAsync(bob.Id, 30m)
+        };
+
+        var aliceResult = await GetAccountsAsync(await CreateTokenAsync(alice));
+        var bobResult = await GetAccountsAsync(await CreateTokenAsync(bob));
+
+        Assert.Equal(
+            aliceAccounts.Select(a => a.Id).Order(),
+            aliceResult.Select(a => a.Id));
+        Assert.Equal(
+            bobAccounts.Select(a => a.Id),
+            bobResult.Select(a => a.Id));
+
+        Assert.Empty(aliceResult.Select(a => a.Iban).Intersect(bobResult.Select(a => a.Iban)));
+    }
+
+    [Fact]
+    public async Task GetAccounts_UserWithoutAccounts_DoesNotSeeOtherUsersAccounts()
+    {
+        var owner = await CreateUserAsync(Role.Customer);
+        var other = await CreateUserAsync(Role.Customer);
+
+        await CreateAccountAsync(owner.Id, 500m);
+        await CreateAccountAsync(owner.Id, 600m);
+
+        var otherResult = await GetAccountsAsync(await CreateTokenAsync(other));
+
+        Assert.Empty(otherResult);
+    }
+
+    [Fact]
+    public async Task GetAccounts_AfterRealLogin_ReturnsOwnAccounts()
+    {
+        var owner = await CreateUserAsync(Role.Customer);
+        var other = await CreateUserAsync(Role.Customer);
+
+        var ownAccount = await CreateAccountAsync(owner.Id, 42.50m);
+        await CreateAccountAsync(other.Id, 1m);
+
+        var loginResponse = await _client.PostAsJsonAsync(
+            "/api/auth/login",
+            new LoginRequest { Username = owner.Username, Password = TestPassword });
+
+        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+
+        var auth = await loginResponse.Content.ReadFromJsonAsync<AuthResponse>();
+
+        Assert.NotNull(auth);
+
+        var accounts = await GetAccountsAsync(auth.Token);
+
+        var account = Assert.Single(accounts);
+        Assert.Equal(ownAccount.Id, account.Id);
+        Assert.Equal(ownAccount.Iban, account.Iban);
+    }
+
+    [Theory]
+    [InlineData("garbage")]
+    [InlineData("tampered-signature")]
+    public async Task GetAccounts_WithInvalidToken_ReturnsUnauthorized(string kind)
+    {
+        var owner = await CreateUserAsync(Role.Customer);
+        await CreateAccountAsync(owner.Id, 100m);
+
+        var token = kind == "garbage"
+            ? "not-a-jwt"
+            : TamperSignature(await CreateTokenAsync(owner));
+
+        var response = await SendGetAccountsAsync(token);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetAccounts_WithTokenForUnknownUser_ReturnsEmptyList()
+    {
+        var owner = await CreateUserAsync(Role.Customer);
+        await CreateAccountAsync(owner.Id, 100m);
+
+        var ghost = new User
+        {
+            Id = int.MaxValue,
+            Username = "ghost",
+            Role = Role.Customer
+        };
+
+        var result = await GetAccountsAsync(await CreateTokenAsync(ghost));
+
+        Assert.Empty(result);
+    }
+
+    private const string TestPassword = "Some-password-123";
+
+    private static string TamperSignature(string token)
+    {
+        var parts = token.Split('.');
+        var signature = parts[2].ToCharArray();
+        signature[0] = signature[0] == 'A' ? 'B' : 'A';
+        parts[2] = new string(signature);
+        return string.Join('.', parts);
+    }
+
+    private async Task<List<AccountDto>> GetAccountsAsync(string token)
+    {
+        var response = await SendGetAccountsAsync(token);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var accounts = await response.Content.ReadFromJsonAsync<List<AccountDto>>();
+
+        Assert.NotNull(accounts);
+
+        return accounts;
+    }
+
     private Task<HttpResponseMessage> SendGetAccountsAsync(string token)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, "/api/accounts");
@@ -139,7 +268,7 @@ public sealed class AccountsApiTests
             Role = role
         };
 
-        user.PasswordHash = passwordHasher.HashPassword(user, "Some-password-123");
+        user.PasswordHash = passwordHasher.HashPassword(user, TestPassword);
 
         db.Users.Add(user);
 
