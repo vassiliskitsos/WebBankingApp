@@ -1,16 +1,27 @@
 @page "/accounts"
 @using System.Globalization
 @using WebBanking.Client.Services
+@using Microsoft.AspNetCore.Components.Authorization
 @using WebBanking.Contracts.Accounts
 @using WebBanking.Contracts.Common
 @inject IApiClient ApiClient
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@implements IDisposable
 
 <PageTitle>Λογαριασμοί - WebBanking</PageTitle>
 
 <div class="container mt-4">
     <h3 class="mb-3">Λογαριασμοί</h3>
 
-    @if (isLoading)
+    @if (!isSignedIn && !isLoading)
+    {
+        <div class="alert alert-info" role="status">
+            <p class="mb-2">Συνδεθείτε για να δείτε τους λογαριασμούς σας.</p>
+            <a class="btn btn-outline-primary btn-sm" href="login">Σύνδεση</a>
+        </div>
+    }
+    else if (isLoading)
     {
         <div class="d-flex align-items-center gap-2 text-muted" role="status" aria-live="polite">
             <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
@@ -83,9 +94,45 @@
     private IReadOnlyList<AccountDto>? accounts;
     private bool isLoading = true;
     private bool isUnauthorized;
+    private bool isSignedIn;
     private string? errorMessage;
 
-    protected override Task OnInitializedAsync() => LoadAccountsAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        AuthStateProvider.AuthenticationStateChanged += OnAuthenticationStateChangedAsync;
+
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        isSignedIn = state.User.Identity?.IsAuthenticated == true;
+
+        if (!isSignedIn)
+        {
+            isLoading = false;
+            Navigation.NavigateTo("login");
+            return;
+        }
+
+        await LoadAccountsAsync();
+    }
+
+    private async void OnAuthenticationStateChangedAsync(Task<AuthenticationState> stateTask)
+    {
+        var state = await stateTask;
+        isSignedIn = state.User.Identity?.IsAuthenticated == true;
+
+        if (!isSignedIn)
+        {
+            accounts = null;
+            errorMessage = null;
+            isLoading = false;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        AuthStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChangedAsync;
+    }
 
     private async Task LoadAccountsAsync()
     {

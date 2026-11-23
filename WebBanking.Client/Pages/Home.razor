@@ -1,5 +1,6 @@
 ﻿@page "/"
 @using Microsoft.AspNetCore.Components.Authorization
+@implements IDisposable
 
 <PageTitle>Home</PageTitle>
 
@@ -43,22 +44,31 @@
 </div>
 
 @code {
-    [CascadingParameter]
-    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
-
     private string? _userName;
+
+    [Inject]
+    private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
-        if (AuthenticationStateTask is null)
-        {
-            return;
-        }
+        AuthStateProvider.AuthenticationStateChanged += OnAuthenticationStateChangedAsync;
+        await ReadUserNameAsync();
+    }
 
-        var state = await AuthenticationStateTask;
-        if (state.User.Identity?.IsAuthenticated == true)
-        {
-            _userName = state.User.Identity.Name;
-        }
+    private async void OnAuthenticationStateChangedAsync(Task<AuthenticationState> stateTask)
+    {
+        await ReadUserNameAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ReadUserNameAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        _userName = state.User.Identity?.IsAuthenticated == true ? state.User.Identity.Name : null;
+    }
+
+    public void Dispose()
+    {
+        AuthStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChangedAsync;
     }
 }

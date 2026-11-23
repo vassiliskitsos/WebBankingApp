@@ -20,6 +20,7 @@ public sealed class AccountsPageRenderTests
     public void Render_WhileRequestPending_ShowsLoadingState()
     {
         using var ctx = new BunitContext();
+        ctx.AddAuthorization().SetAuthorized("probeuser");
         ctx.Services.AddScoped<IApiClient>(_ => new StubApiClient(
             () => new TaskCompletionSource<Result<IReadOnlyList<AccountDto>>>().Task));
 
@@ -32,6 +33,7 @@ public sealed class AccountsPageRenderTests
     public void Render_WithAccounts_ShowsIbanBalanceAndCurrency()
     {
         using var ctx = new BunitContext();
+        ctx.AddAuthorization().SetAuthorized("probeuser");
         ctx.Services.AddScoped<IApiClient>(_ => new StubApiClient(() =>
             Task.FromResult(Result<IReadOnlyList<AccountDto>>.Ok([Account]))));
 
@@ -48,6 +50,7 @@ public sealed class AccountsPageRenderTests
     public void Render_WithNoAccounts_ShowsEmptyState()
     {
         using var ctx = new BunitContext();
+        ctx.AddAuthorization().SetAuthorized("probeuser");
         ctx.Services.AddScoped<IApiClient>(_ => new StubApiClient(() =>
             Task.FromResult(Result<IReadOnlyList<AccountDto>>.Ok([]))));
 
@@ -61,6 +64,7 @@ public sealed class AccountsPageRenderTests
     public void Render_WhenUnauthorized_ShowsSessionExpiredWithoutRetry()
     {
         using var ctx = new BunitContext();
+        ctx.AddAuthorization().SetAuthorized("probeuser");
         ctx.Services.AddScoped<IApiClient>(_ => new StubApiClient(() =>
             Task.FromResult(Result<IReadOnlyList<AccountDto>>.Fail(
                 new Error(ErrorType.Unauthorized, "Unauthorized")))));
@@ -75,6 +79,7 @@ public sealed class AccountsPageRenderTests
     public void Render_WhenRequestFails_ShowsErrorWithRetry()
     {
         using var ctx = new BunitContext();
+        ctx.AddAuthorization().SetAuthorized("probeuser");
         ctx.Services.AddScoped<IApiClient>(_ => new StubApiClient(() =>
             Task.FromResult(Result<IReadOnlyList<AccountDto>>.Fail(
                 new Error(ErrorType.Unprocessable, "Σφάλμα διακομιστή")))));

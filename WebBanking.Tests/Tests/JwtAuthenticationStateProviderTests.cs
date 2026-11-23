@@ -67,6 +67,31 @@ public sealed class JwtAuthenticationStateProviderTests
         Assert.True(isAuthenticatedAfterNotify);
     }
 
+    [Fact]
+    public async Task SignOutAsync_ClearsSessionAndNotifiesAnonymousState()
+    {
+        var tokenStore = new InMemoryAuthTokenStore();
+        await tokenStore.SetSessionAsync(new AuthResponse(
+            UserId: 7,
+            Username: "theofania",
+            Role: "Customer",
+            Token: "valid-jwt-token",
+            ExpiresAtUtc: DateTime.UtcNow.AddHours(1)));
+        var provider = new JwtAuthenticationStateProvider(tokenStore);
+
+        var isAuthenticatedAfterSignOut = true;
+        provider.AuthenticationStateChanged += async task =>
+        {
+            var updatedState = await task;
+            isAuthenticatedAfterSignOut = updatedState.User.Identity?.IsAuthenticated ?? false;
+        };
+
+        await provider.SignOutAsync();
+
+        Assert.Null(tokenStore.CurrentSession);
+        Assert.False(isAuthenticatedAfterSignOut);
+    }
+
     private sealed class InMemoryAuthTokenStore : IAuthTokenStore
     {
         public AuthResponse? CurrentSession { get; private set; }

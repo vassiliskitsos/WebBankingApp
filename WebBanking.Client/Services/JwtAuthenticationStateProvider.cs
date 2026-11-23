@@ -33,4 +33,10 @@ public sealed class JwtAuthenticationStateProvider(IAuthTokenStore tokenStore)
     {
         NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
     }
+
+    public async Task SignOutAsync()
+    {
+        await tokenStore.ClearAsync();
+        NotifyAuthStateChanged();
+    }
 }
