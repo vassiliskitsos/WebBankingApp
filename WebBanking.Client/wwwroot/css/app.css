@@ -121,7 +121,7 @@ a:hover {
 }
 
 .form-control::placeholder {
-    color: #5b5b66;
+    color: var(--wb-muted);
 }
 
 .form-label, .form-check-label {
@@ -210,6 +210,7 @@ a:hover {
     color-scheme: light only;
     background: lightyellow;
     bottom: 0;
+    color: #1a1a1f;
     box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
     box-sizing: border-box;
     display: none;
