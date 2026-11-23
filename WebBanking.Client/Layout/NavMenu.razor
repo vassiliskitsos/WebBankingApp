@@ -23,7 +23,7 @@
                     <NavLink class="nav-link" href="accounts"><i class="fa-solid fa-wallet nav-icon" aria-hidden="true"></i>Λογαριασμοί</NavLink>
                 </div>
                 <div class="nav-item px-3">
-                    <button type="button" class="nav-link btn btn-link text-start p-0" @onclick="SignOutAsync"><i class="fa-solid fa-right-from-bracket nav-icon" aria-hidden="true"></i>Αποσύνδεση</button>
+                    <button type="button" class="nav-link btn btn-link text-start p-0" @onclick="SignOutAsync" @onclick:stopPropagation="true"><i class="fa-solid fa-right-from-bracket nav-icon" aria-hidden="true"></i>Αποσύνδεση</button>
                 </div>
             </Authorized>
             <NotAuthorized>

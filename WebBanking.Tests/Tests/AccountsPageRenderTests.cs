@@ -90,6 +90,38 @@ public sealed class AccountsPageRenderTests
         Assert.NotNull(cut.Find("button"));
     }
 
+    [Fact]
+    public void SignIn_WhileOnAccountsPage_LoadsAccounts()
+    {
+        using var ctx = new BunitContext();
+        var auth = ctx.AddAuthorization();
+        auth.SetNotAuthorized();
+        ctx.Services.AddScoped<IApiClient>(_ => new StubApiClient(() =>
+            Task.FromResult(Result<IReadOnlyList<AccountDto>>.Ok([Account]))));
+
+        var cut = ctx.Render<AccountsPage>();
+        auth.SetAuthorized("probeuser");
+
+        cut.WaitForElement("tbody tr");
+        Assert.Contains(Account.Iban, cut.Markup);
+    }
+
+    [Fact]
+    public void SignIn_WhenLoadThrows_ShowsErrorInsteadOfSpinner()
+    {
+        using var ctx = new BunitContext();
+        var auth = ctx.AddAuthorization();
+        auth.SetNotAuthorized();
+        ctx.Services.AddScoped<IApiClient>(_ => new StubApiClient(
+            () => throw new InvalidOperationException("boom")));
+
+        var cut = ctx.Render<AccountsPage>();
+        auth.SetAuthorized("probeuser");
+
+        cut.WaitForState(() => cut.Markup.Contains("Δεν ήταν δυνατή η φόρτωση"));
+        Assert.DoesNotContain("Φόρτωση λογαριασμών", cut.Markup);
+    }
+
     private sealed class StubApiClient(
         Func<Task<Result<IReadOnlyList<AccountDto>>>> getAccounts) : IApiClient
     {

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Playwright;
@@ -65,6 +66,10 @@ public sealed class E2EFixture : IAsyncLifetime
         using var client = _api.CreateClient();
         ApiBaseUrl = client.BaseAddress!.ToString().TrimEnd('/');
 
+        // the published client reads its API address from appsettings.json, so point it at this server
+        await File.WriteAllTextAsync(Path.Combine(clientFolder, "appsettings.json"),
+            JsonSerializer.Serialize(new { ApiBaseUrl }));
+
         // downloads chromium if not installed
         var exitCode = await Task.Run(() => Microsoft.Playwright.Program.Main(["install", "chromium"]));
         if (exitCode != 0)
@@ -107,60 +112,6 @@ public sealed class E2EFixture : IAsyncLifetime
 
             _publishFolder = null;
         }
-    }
-
-    // the published client calls the dev API on localhost:5249; send those calls to this test server instead
-    public async Task RouteDevApiToTestServerAsync(IBrowserContext context)
-    {
-        var corsHeaders = new Dictionary<string, string>
-        {
-            ["Access-Control-Allow-Origin"] = "*",
-            ["Access-Control-Allow-Headers"] = "*",
-            ["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS"
-        };
-
-        await context.RouteAsync("http://localhost:5249/**", async route =>
-        {
-            var request = route.Request;
-            if (request.Method == HttpMethod.Options.Method)
-            {
-                await route.FulfillAsync(new() { Status = 204, Headers = corsHeaders });
-                return;
-            }
-
-            using var message = new HttpRequestMessage(
-                new HttpMethod(request.Method),
-                ApiBaseUrl + new Uri(request.Url).PathAndQuery);
-
-            if (request.PostDataBuffer is { } body)
-            {
-                message.Content = new ByteArrayContent(body);
-                if (request.Headers.TryGetValue("content-type", out var contentType))
-                {
-                    message.Content.Headers.TryAddWithoutValidation("Content-Type", contentType);
-                }
-            }
-
-            if (request.Headers.TryGetValue("authorization", out var authorization))
-            {
-                message.Headers.TryAddWithoutValidation("Authorization", authorization);
-            }
-
-            using var http = new HttpClient();
-            using var response = await http.SendAsync(message);
-
-            var headers = new Dictionary<string, string>(corsHeaders)
-            {
-                ["Content-Type"] = response.Content.Headers.ContentType?.ToString() ?? "application/json"
-            };
-
-            await route.FulfillAsync(new()
-            {
-                Status = (int)response.StatusCode,
-                Headers = headers,
-                BodyBytes = await response.Content.ReadAsByteArrayAsync()
-            });
-        });
     }
 
     private static string PublishClient(string output)

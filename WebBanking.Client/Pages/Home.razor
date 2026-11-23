@@ -1,5 +1,6 @@
 ﻿@page "/"
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Logging
 @implements IDisposable
 
 <PageTitle>Home</PageTitle>
@@ -49,6 +50,9 @@
     [Inject]
     private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
 
+    [Inject]
+    private ILogger<Home> Logger { get; set; } = default!;
+
     protected override async Task OnInitializedAsync()
     {
         AuthStateProvider.AuthenticationStateChanged += OnAuthenticationStateChangedAsync;
@@ -57,8 +61,15 @@
 
     private async void OnAuthenticationStateChangedAsync(Task<AuthenticationState> stateTask)
     {
-        await ReadUserNameAsync();
-        await InvokeAsync(StateHasChanged);
+        try
+        {
+            await ReadUserNameAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to refresh the home page after an authentication state change.");
+        }
     }
 
     private async Task ReadUserNameAsync()

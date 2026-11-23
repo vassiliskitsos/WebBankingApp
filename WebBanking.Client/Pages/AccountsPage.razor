@@ -2,11 +2,13 @@
 @using System.Globalization
 @using WebBanking.Client.Services
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Logging
 @using WebBanking.Contracts.Accounts
 @using WebBanking.Contracts.Common
 @inject IApiClient ApiClient
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
+@inject ILogger<AccountsPage> Logger
 @implements IDisposable
 
 <PageTitle>Λογαριασμοί - WebBanking</PageTitle>
@@ -116,17 +118,34 @@
 
     private async void OnAuthenticationStateChangedAsync(Task<AuthenticationState> stateTask)
     {
-        var state = await stateTask;
-        isSignedIn = state.User.Identity?.IsAuthenticated == true;
-
-        if (!isSignedIn)
+        try
         {
-            accounts = null;
-            errorMessage = null;
-            isLoading = false;
-        }
+            var state = await stateTask;
+            var wasSignedIn = isSignedIn;
+            isSignedIn = state.User.Identity?.IsAuthenticated == true;
 
-        await InvokeAsync(StateHasChanged);
+            if (!isSignedIn)
+            {
+                accounts = null;
+                errorMessage = null;
+                isLoading = false;
+            }
+            else if (!wasSignedIn)
+            {
+                isLoading = true;
+                await InvokeAsync(StateHasChanged);
+                await LoadAccountsAsync();
+            }
+
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to handle an authentication state change on the accounts page.");
+            isLoading = false;
+            errorMessage = "Δεν ήταν δυνατή η φόρτωση των λογαριασμών. Δοκιμάστε ξανά.";
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     public void Dispose()

@@ -12,7 +12,9 @@ var defaultApiBaseUrl = builder.HostEnvironment.BaseAddress.StartsWith("https://
     ? "https://localhost:7211"
     : "http://localhost:5249";
 
-var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? defaultApiBaseUrl;
+// wwwroot/appsettings.json must exist so the framework loads it; the E2E harness overwrites ApiBaseUrl there
+var configuredApiBaseUrl = builder.Configuration["ApiBaseUrl"];
+var apiBaseUrl = string.IsNullOrWhiteSpace(configuredApiBaseUrl) ? defaultApiBaseUrl : configuredApiBaseUrl;
 
 builder.Services.AddScoped(_ => new HttpClient
 {
