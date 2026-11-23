@@ -15,23 +15,23 @@
 <div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
     <nav class="nav flex-column">
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Αρχική</NavLink>
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All"><i class="fa-solid fa-house nav-icon" aria-hidden="true"></i>Αρχική</NavLink>
         </div>
         <AuthorizeView>
             <Authorized>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="accounts">Λογαριασμοί</NavLink>
+                    <NavLink class="nav-link" href="accounts"><i class="fa-solid fa-wallet nav-icon" aria-hidden="true"></i>Λογαριασμοί</NavLink>
                 </div>
                 <div class="nav-item px-3">
-                    <button type="button" class="nav-link btn btn-link text-start p-0" @onclick="SignOutAsync">Αποσύνδεση</button>
+                    <button type="button" class="nav-link btn btn-link text-start p-0" @onclick="SignOutAsync"><i class="fa-solid fa-right-from-bracket nav-icon" aria-hidden="true"></i>Αποσύνδεση</button>
                 </div>
             </Authorized>
             <NotAuthorized>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="register">Εγγραφή</NavLink>
+                    <NavLink class="nav-link" href="register"><i class="fa-solid fa-user-plus nav-icon" aria-hidden="true"></i>Εγγραφή</NavLink>
                 </div>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="login">Σύνδεση</NavLink>
+                    <NavLink class="nav-link" href="login"><i class="fa-solid fa-right-to-bracket nav-icon" aria-hidden="true"></i>Σύνδεση</NavLink>
                 </div>
             </NotAuthorized>
         </AuthorizeView>
