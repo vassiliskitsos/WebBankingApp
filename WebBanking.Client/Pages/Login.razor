@@ -1,6 +1,9 @@
 @page "/login"
 @using System.ComponentModel.DataAnnotations
+@using WebBanking.Client.Services
 @using WebBanking.Contracts.Auth
+@inject IApiClient ApiClient
+@inject JwtAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 
 <PageTitle>Σύνδεση - WebBanking</PageTitle>
@@ -111,19 +114,17 @@
 
         try
         {
-            // TODO(S1-08): Replace this placeholder with the real login call through ApiClient and AuthenticationStateProvider.
-            // Until then, any password except "wrong" is accepted.
-            await Task.Delay(500);
+            var result = await ApiClient.LoginAsync(request);
 
-            if (request.Password == "wrong")
+            if (!result.IsSuccess)
             {
-                // Ασφαλής χειρισμός λάθος credentials (χωρίς αποκάλυψη ύπαρξης username)
-                errorMessage = "Λάθος όνομα χρήστη ή κωδικός πρόσβασης.";
+                errorMessage = result.Error?.Message
+                    ?? "Λάθος όνομα χρήστη ή κωδικός πρόσβασης.";
                 model.Password = string.Empty;
                 return;
             }
 
-            // Σωστή πλοήγηση μετά από επιτυχή σύνδεση
+            AuthStateProvider.NotifyAuthStateChanged();
             Navigation.NavigateTo("/");
         }
         catch (Exception)

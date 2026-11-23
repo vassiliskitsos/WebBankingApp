@@ -1,15 +1,14 @@
-using WebBanking.Api.Services;
-using WebBanking.Api.Services.Abstractions;
-using WebBanking.Api.Repositories;
-using WebBanking.Api.Data.Entities;
-using WebBanking.Api.Data.Repositories;
-using Microsoft.AspNetCore.Identity;
-
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using WebBanking.Api.Data;
+using WebBanking.Api.Data.Entities;
+using WebBanking.Api.Data.Repositories;
+using WebBanking.Api.Repositories;
+using WebBanking.Api.Services;
+using WebBanking.Api.Services.Abstractions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,16 +16,31 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-// Authentication services
+// CORS for Blazor WebAssembly client
+const string ClientCorsPolicy = "ClientCorsPolicy";
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? ["http://localhost:5018", "https://localhost:7198"];
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(ClientCorsPolicy, policy =>
+    {
+        policy
+            .WithOrigins(allowedOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
+// Authentication & domain services
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddScoped<IRegistrationService, RegistrationService>();
 builder.Services.AddScoped<ILoginService, LoginService>();
+builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
-
-// Account services
-builder.Services.AddScoped<IAccountRepository, AccountRepository>();
-builder.Services.AddScoped<IAccountService, AccountService>();
 
 // Database. The connection string is read when the context is first resolved,
 // so hosts that never touch the database (e.g. the e2e tests) start without one.
@@ -95,7 +109,13 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+app.UseCors(ClientCorsPolicy);
+
+// The Development HTTP client cannot follow a cross-origin redirect without losing Authorization.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
