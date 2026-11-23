@@ -110,7 +110,12 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors(ClientCorsPolicy);
-app.UseHttpsRedirection();
+
+// The Development HTTP client cannot follow a cross-origin redirect without losing Authorization.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
