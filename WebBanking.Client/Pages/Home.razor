@@ -1,7 +1,64 @@
 ﻿@page "/"
+@using Microsoft.AspNetCore.Components.Authorization
 
 <PageTitle>Home</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="hero">
+    <span class="eyebrow">Online banking</span>
+    @if (_userName is not null)
+    {
+        <h1>Καλώς ήρθατε, @_userName</h1>
+        <p class="lead mb-4">Δείτε τους λογαριασμούς σας και τις τελευταίες κινήσεις σας από ένα σημείο.</p>
+    }
+    else
+    {
+        <h1>Καλώς ήρθατε στο WebBanking</h1>
+        <p class="lead mb-4">Διαχειριστείτε τους λογαριασμούς σας και συνδεθείτε με ασφάλεια από ένα σημείο.</p>
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-accent btn-lg px-4" href="login">Σύνδεση</a>
+            <a class="btn btn-outline-light btn-lg px-4" href="register">Δημιουργία λογαριασμού</a>
+        </div>
+    }
+</div>
 
-Welcome to your new app.
+<div class="row g-4">
+    <div class="col-md-6">
+        <a href="accounts" class="text-decoration-none d-block h-100">
+            <div class="card card-link-tile h-100 p-4">
+                <h3 class="h5 mb-2">Οι λογαριασμοί σας</h3>
+                <p class="text-muted mb-4">Δείτε τα υπόλοιπα και τον τύπο κάθε λογαριασμού σας σε μία σελίδα.</p>
+                <span class="fw-semibold">Μετάβαση στους λογαριασμούς →</span>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-6">
+        <a href="login" class="text-decoration-none d-block h-100">
+            <div class="card card-link-tile h-100 p-4">
+                <h3 class="h5 mb-2">Ασφαλής πρόσβαση</h3>
+                <p class="text-muted mb-4">Η συνεδρία σας προστατεύεται με συνδέσεις JWT και ασφαλή αποθήκευση.</p>
+                <span class="fw-semibold">Σύνδεση στον λογαριασμό σας →</span>
+            </div>
+        </a>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private string? _userName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthenticationStateTask is null)
+        {
+            return;
+        }
+
+        var state = await AuthenticationStateTask;
+        if (state.User.Identity?.IsAuthenticated == true)
+        {
+            _userName = state.User.Identity.Name;
+        }
+    }
+}

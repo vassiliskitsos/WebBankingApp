@@ -33,6 +33,6 @@ public sealed class ApiSmokeTests
 
         await page.GotoAsync(_fixture.ApiBaseUrl);
 
-        await Assertions.Expect(page.Locator("h1")).ToHaveTextAsync("Hello, world!", new() { Timeout = 30_000 });
+        await Assertions.Expect(page.Locator("h1")).ToHaveTextAsync("Καλώς ήρθατε στο WebBanking", new() { Timeout = 30_000 });
     }
 }

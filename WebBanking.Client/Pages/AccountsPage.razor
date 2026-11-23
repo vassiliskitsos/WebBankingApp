@@ -1,0 +1,116 @@
+@page "/accounts"
+@using System.Globalization
+@using WebBanking.Client.Services
+@using WebBanking.Contracts.Accounts
+@using WebBanking.Contracts.Common
+@inject IApiClient ApiClient
+
+<PageTitle>Λογαριασμοί - WebBanking</PageTitle>
+
+<div class="container mt-4">
+    <h3 class="mb-3">Λογαριασμοί</h3>
+
+    @if (isLoading)
+    {
+        <div class="d-flex align-items-center gap-2 text-muted" role="status" aria-live="polite">
+            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+            <span>Φόρτωση λογαριασμών...</span>
+        </div>
+    }
+    else if (errorMessage is not null)
+    {
+        <div class="alert alert-danger" role="alert">
+            <p class="mb-2">@errorMessage</p>
+            @if (!isUnauthorized)
+            {
+                <button type="button" class="btn btn-outline-danger btn-sm" @onclick="LoadAccountsAsync">Δοκιμή ξανά</button>
+            }
+        </div>
+    }
+    else if (accounts is null || accounts.Count == 0)
+    {
+        <div class="alert alert-info" role="status">Δεν βρέθηκαν λογαριασμοί.</div>
+    }
+    else
+    {
+        <div class="table-responsive d-none d-md-block">
+            <table class="table table-striped align-middle">
+                <thead>
+                    <tr>
+                        <th scope="col">IBAN</th>
+                        <th scope="col" class="text-end">Υπόλοιπο</th>
+                        <th scope="col">Νόμισμα</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var account in accounts)
+                    {
+                        <tr>
+                            <td class="text-break">@account.Iban</td>
+                            <td class="text-end">@FormatBalance(account.Balance)</td>
+                            <td>@account.Currency</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-md-none">
+            @foreach (var account in accounts)
+            {
+                <div class="card mb-2 shadow-sm">
+                    <div class="card-body">
+                        <div class="small text-muted">IBAN</div>
+                        <div class="text-break mb-2">@account.Iban</div>
+                        <div class="d-flex justify-content-between align-items-baseline">
+                            <div>
+                                <div class="small text-muted">Υπόλοιπο</div>
+                                <strong>@FormatBalance(account.Balance)</strong>
+                            </div>
+                            <div class="text-end">
+                                <div class="small text-muted">Νόμισμα</div>
+                                <span>@account.Currency</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<AccountDto>? accounts;
+    private bool isLoading = true;
+    private bool isUnauthorized;
+    private string? errorMessage;
+
+    protected override Task OnInitializedAsync() => LoadAccountsAsync();
+
+    private async Task LoadAccountsAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        isUnauthorized = false;
+
+        var result = await ApiClient.GetAsync<IReadOnlyList<AccountDto>>("api/accounts");
+
+        if (result.IsSuccess)
+        {
+            accounts = result.Value;
+        }
+        else
+        {
+            accounts = null;
+            isUnauthorized = result.Error!.Type == ErrorType.Unauthorized;
+            errorMessage = isUnauthorized
+                ? "Η συνεδρία σας έχει λήξει. Παρακαλούμε συνδεθείτε ξανά."
+                : result.Error.Message;
+        }
+
+        isLoading = false;
+    }
+
+    private static string FormatBalance(decimal balance) =>
+        balance.ToString("N2", CultureInfo.InvariantCulture);
+}

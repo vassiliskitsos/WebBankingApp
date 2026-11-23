@@ -1,23 +1,193 @@
+:root {
+    --wb-bg: #0a0a0b;
+    --wb-surface: #131316;
+    --wb-surface-2: #1a1a1f;
+    --wb-border: #26262c;
+    --wb-text: #f4f4f5;
+    --wb-muted: #8b8b96;
+    --wb-primary: #fafafa;
+    --wb-primary-dark: #050506;
+    --wb-accent: #fafafa;
+}
+
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: var(--wb-text);
+    background-color: var(--wb-bg);
+    -webkit-font-smoothing: antialiased;
 }
 
 h1:focus {
     outline: none;
 }
 
+h1, h2, h3 {
+    color: var(--wb-text);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.text-muted {
+    color: var(--wb-muted) !important;
+}
+
+.alert {
+    background: var(--wb-surface-2);
+    border: 1px solid var(--wb-border);
+    color: var(--wb-text);
+    border-radius: 12px;
+}
+
+.alert-info {
+    border-left: 3px solid var(--wb-text);
+}
+
+.alert-danger {
+    border-color: #7f1d1d;
+    border-left: 3px solid #f87171;
+    color: #fecaca;
+}
+
 a, .btn-link {
-    color: #0071c1;
+    color: var(--wb-text);
+    text-decoration: none;
+}
+
+a:hover {
+    color: #ffffff;
+}
+
+.btn {
+    border-radius: 10px;
+    font-weight: 600;
+    transition: background-color 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
 }
 
 .btn-primary {
-    color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
+    color: #09090b;
+    background-color: #fafafa;
+    border: 1px solid #fafafa;
+}
+
+.btn-primary:hover, .btn-primary:focus {
+    color: #09090b;
+    background-color: #e4e4e7;
+    border-color: #e4e4e7;
+}
+
+.btn-accent {
+    color: #09090b;
+    background-color: #fafafa;
+    border: 1px solid #fafafa;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.btn-accent:hover {
+    background-color: #e4e4e7;
+}
+
+.btn-outline-light {
+    color: var(--wb-text);
+    border: 1px solid var(--wb-border);
+    background: transparent;
+}
+
+.btn-outline-light:hover {
+    color: #ffffff;
+    background-color: var(--wb-surface-2);
+    border-color: #3f3f46;
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+    box-shadow: 0 0 0 0.2rem rgba(250, 250, 250, 0.15);
+}
+
+.form-control, .form-select {
+    background-color: var(--wb-surface-2);
+    color: var(--wb-text);
+    border: 1px solid var(--wb-border);
+    border-radius: 10px;
+}
+
+.form-control:focus, .form-select:focus {
+    background-color: var(--wb-surface-2);
+    color: var(--wb-text);
+    border-color: #52525b;
+}
+
+.form-control::placeholder {
+    color: #5b5b66;
+}
+
+.form-label, .form-check-label {
+    color: var(--wb-muted);
+}
+
+.card {
+    border: 1px solid var(--wb-border);
+    border-radius: 16px;
+    background-color: var(--wb-surface);
+    color: var(--wb-text);
+    box-shadow: none;
+}
+
+.card-link-tile {
+    transition: border-color 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
+}
+
+.card-link-tile:hover {
+    border-color: #3f3f46;
+    background-color: var(--wb-surface-2);
+    transform: translateY(-2px);
+}
+
+.hero {
+    position: relative;
+    overflow: hidden;
+    color: var(--wb-text);
+    background:
+        radial-gradient(circle at 85% 0%, rgba(161, 161, 170, 0.22), transparent 45%),
+        linear-gradient(160deg, #18181b 0%, #0a0a0b 70%);
+    border: 1px solid var(--wb-border);
+    border-radius: 22px;
+    padding: 3.5rem 3rem;
+    margin-bottom: 2rem;
+}
+
+.hero h1 {
+    color: transparent;
+    background: linear-gradient(90deg, #ffffff 0%, #a1a1aa 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    font-size: 2.75rem;
+    font-weight: 800;
+}
+
+.hero .accent {
+    color: transparent;
+}
+
+.hero .lead {
+    color: var(--wb-muted);
+    max-width: 36rem;
+}
+
+.eyebrow {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--wb-muted);
+    border: 1px solid var(--wb-border);
+    border-radius: 999px;
+    padding: 0.3rem 0.8rem;
+    margin-bottom: 1.25rem;
 }
 
 .content {
