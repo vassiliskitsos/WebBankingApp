@@ -361,7 +361,7 @@ dotnet test WebBanking.Tests --filter "FullyQualifiedName~E2ETests"
 Δεν απαιτούνται unit tests. Απαιτούνται **αυτοματοποιημένα integration tests** μέχρι το τέλος του εξαμήνου. Τα tests τρέχουν πριν ολοκληρωθεί κάθε sprint· ένα story δεν θεωρείται ολοκληρωμένο αν δεν περνούν.
 
 - **Integration (`WebBanking.Tests/Tests/`):** xUnit με `WebApplicationFactory` σε δοκιμαστική βάση PostgreSQL. Καλύπτουν: εγγραφή και σύνδεση, μεταφορά με επαρκές και ανεπαρκές υπόλοιπο, `401` / `403` / `404`, CRUD δικαιούχων.
-- **End-to-end (`WebBanking.Tests/E2ETests/`):** Playwright για .NET (xUnit) για τις βασικές ροές από το UI.
+- **End-to-end (`WebBanking.Tests/E2ETests/`):** Playwright για .NET (xUnit) για τις βασικές ροές από το UI. Τα `AuthFlowE2ETests` και `LogoutE2ETests` καλύπτουν σύνδεση (επιτυχής και με λάθος κωδικό), αποσύνδεση, ανακατεύθυνση από προστατευμένη σελίδα στο `/login` και διαγραφή του token από το `sessionStorage` (και μετά από reload ή Back).
 
 #### CI (GitHub Actions)
 
