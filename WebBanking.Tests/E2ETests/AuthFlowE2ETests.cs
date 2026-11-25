@@ -51,7 +51,7 @@ public sealed class AuthFlowE2ETests
 
         await Assertions.Expect(page.Locator(".alert-danger")).ToBeVisibleAsync(new() { Timeout = UiTimeout });
         await Assertions.Expect(page.Locator("#password")).ToHaveValueAsync(string.Empty);
-        await Assertions.Expect(page).ToHaveURLAsync($"{_fixture.ApiBaseUrl}/login");
+        await Assertions.Expect(page).ToHaveURLAsync($"{_fixture.ApiBaseUrl}/login", new() { Timeout = UiTimeout });
         await Assertions.Expect(NavLoginLink(page)).ToBeVisibleAsync();
         Assert.Null(await ReadStoredSessionAsync(page));
     }
@@ -68,6 +68,8 @@ public sealed class AuthFlowE2ETests
         await page.WaitForURLAsync("**/login", new() { Timeout = UiTimeout });
         await Assertions.Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Σύνδεση" }))
             .ToBeVisibleAsync(new() { Timeout = UiTimeout });
+        // let any late request show up before asserting that none was sent
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
         Assert.Empty(accountsRequests);
         Assert.Null(await ReadStoredSessionAsync(page));
     }
@@ -104,11 +106,18 @@ public sealed class AuthFlowE2ETests
         var page = await context.NewPageAsync();
         await SignInAsync(page, _fixture, username);
 
-        // reach the protected page through the app, so it is in the browser history
-        await page.GetByRole(AriaRole.Navigation).GetByRole(AriaRole.Link, new() { Name = "Λογαριασμοί" }).ClickAsync();
+        // reach the protected page through the app, so it is in the browser history;
+        // wait for the signed-in accounts call itself rather than for any particular list content
+        var accountsResponse = await page.RunAndWaitForResponseAsync(
+            () => page.GetByRole(AriaRole.Navigation).GetByRole(AriaRole.Link, new() { Name = "Λογαριασμοί" }).ClickAsync(),
+            response => IsAccountsApi(response.Url),
+            new() { Timeout = UiTimeout });
+        Assert.True(accountsResponse.Ok, $"Αναμενόταν 2xx από το api/accounts, ήρθε {accountsResponse.Status}.");
+        Assert.NotNull(await accountsResponse.Request.HeaderValueAsync("authorization"));
+
+        var accountsHeading = page.GetByRole(AriaRole.Heading, new() { Name = "Λογαριασμοί", Exact = true });
         await page.WaitForURLAsync("**/accounts", new() { Timeout = UiTimeout });
-        var emptyAccounts = page.GetByText("Δεν βρέθηκαν λογαριασμοί");
-        await Assertions.Expect(emptyAccounts).ToBeVisibleAsync(new() { Timeout = UiTimeout });
+        await Assertions.Expect(accountsHeading).ToBeVisibleAsync(new() { Timeout = UiTimeout });
 
         await SignOutAsync(page);
         Assert.Null(await ReadStoredSessionAsync(page));
@@ -128,21 +137,24 @@ public sealed class AuthFlowE2ETests
         // the back step lands on /accounts, which sends a signed-out user straight back to /login
         await Assertions.Expect(page).ToHaveURLAsync($"{_fixture.ApiBaseUrl}/login", new() { Timeout = UiTimeout });
         Assert.Contains(visitedUrls, url => url.EndsWith("/accounts", StringComparison.Ordinal));
-        await Assertions.Expect(emptyAccounts).ToBeHiddenAsync();
+        await Assertions.Expect(accountsHeading).ToBeHiddenAsync();
         await Assertions.Expect(NavLoginLink(page)).ToBeVisibleAsync();
 
-        foreach (var request in accountsRequests)
-        {
-            Assert.Null(await request.HeaderValueAsync("authorization"));
-        }
+        // a signed-out visit to /accounts redirects before calling the API, so no request may be sent at all;
+        // waiting for the network to go quiet keeps a late request from slipping past this check
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        Assert.Empty(accountsRequests);
     }
+
+    private static bool IsAccountsApi(string url) =>
+        new Uri(url).AbsolutePath.StartsWith("/api/accounts", StringComparison.OrdinalIgnoreCase);
 
     private static List<IRequest> RecordAccountsApiRequests(IPage page)
     {
         var requests = new List<IRequest>();
         page.Request += (_, request) =>
         {
-            if (new Uri(request.Url).AbsolutePath.StartsWith("/api/accounts", StringComparison.OrdinalIgnoreCase))
+            if (IsAccountsApi(request.Url))
             {
                 requests.Add(request);
             }
