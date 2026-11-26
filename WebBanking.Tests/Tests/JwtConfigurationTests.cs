@@ -41,12 +41,21 @@ public class JwtConfigurationTests
     public void Startup_WithInvalidIssuer_DoesNotLogSigningSecret()
     {
         using var logs = new RecordingLoggerProvider();
+        using var loggerFactory = LoggerFactory.Create(logging => logging.AddProvider(logs));
+
+        // Confirm the provider captures entries before startup validation runs.
+        loggerFactory.CreateLogger<JwtConfigurationTests>()
+            .LogInformation("JWT startup log capture positive control");
+        Assert.Contains(logs.Entries,
+            entry => entry.Contains("JWT startup log capture positive control"));
+
         using var factory = CreateFactory(ValidSecret, "", logs);
 
         var exception = Assert.Throws<InvalidOperationException>(() => factory.CreateClient());
 
         Assert.Contains("JWT_ISSUER", exception.Message);
         Assert.DoesNotContain(ValidSecret, exception.ToString());
+        Assert.NotEmpty(logs.Entries);
         Assert.All(logs.Entries, entry => Assert.DoesNotContain(ValidSecret, entry));
     }
 
