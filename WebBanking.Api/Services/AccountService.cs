@@ -1,4 +1,4 @@
-using WebBanking.Api.Services.Abstractions;
+using WebBanking.Api.Services.Interfaces;
 using WebBanking.Contracts.Accounts;
 using WebBanking.Contracts.Common;
 

@@ -2,6 +2,7 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using WebBanking.Client.Pages;
 using WebBanking.Client.Services;
+using WebBanking.Client.Services.Interfaces;
 using WebBanking.Contracts.Accounts;
 using WebBanking.Contracts.Auth;
 using WebBanking.Contracts.Common;

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using WebBanking.Api.Data;
 using WebBanking.Api.Data.Entities;
-using WebBanking.Api.Services;
+using WebBanking.Api.Services.Interfaces;
 using WebBanking.Contracts.Accounts;
 using WebBanking.Contracts.Auth;
 using WebBanking.Tests.Infrastructure;

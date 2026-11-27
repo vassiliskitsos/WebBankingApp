@@ -1,6 +1,6 @@
 using WebBanking.Api.Data.Entities;
 
-namespace WebBanking.Api.Repositories;
+namespace WebBanking.Api.Repositories.Interfaces;
 
 public interface IUserRepository
 {

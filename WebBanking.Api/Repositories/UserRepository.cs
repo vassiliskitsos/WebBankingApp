@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using WebBanking.Api.Data;
 using WebBanking.Api.Data.Entities;
+using WebBanking.Api.Repositories.Interfaces;
 
 namespace WebBanking.Api.Repositories;
 

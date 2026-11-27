@@ -1,7 +1,7 @@
 using WebBanking.Api.Data.Entities;
 using WebBanking.Contracts.Auth;
 
-namespace WebBanking.Api.Services;
+namespace WebBanking.Api.Services.Interfaces;
 
 public interface IJwtTokenService
 {

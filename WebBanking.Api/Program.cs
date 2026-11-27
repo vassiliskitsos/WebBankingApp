@@ -7,8 +7,9 @@ using WebBanking.Api.Data;
 using WebBanking.Api.Data.Entities;
 using WebBanking.Api.Data.Repositories;
 using WebBanking.Api.Repositories;
+using WebBanking.Api.Repositories.Interfaces;
 using WebBanking.Api.Services;
-using WebBanking.Api.Services.Abstractions;
+using WebBanking.Api.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
