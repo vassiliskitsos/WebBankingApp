@@ -68,7 +68,8 @@ flowchart LR
 |---|---|---|---|
 | Controllers | `Controllers/` | Λήψη request, κλήση service, μετατροπή `Result` σε HTTP status | Επιχειρησιακοί κανόνες, πρόσβαση στο `DbContext` |
 | Services | `Services/` | Κανόνες (υπόλοιπο, ownership), συντονισμός transactions, επιστροφή `Result<T>` | Γνώση HTTP, `IActionResult`, EF Core |
-| Repository interfaces | `Services/Interfaces/` | Ορισμός συμβολαίου πρόσβασης σε δεδομένα | Υλοποιήσεις || Data | `Data/` | `AppDbContext`, entities, υλοποιήσεις repositories, migrations | Κανόνες εφαρμογής |
+| Repository interfaces | `Services/Interfaces/` | Ορισμός συμβολαίου πρόσβασης σε δεδομένα | Υλοποιήσεις |
+| Data | `Data/` | `AppDbContext`, entities, υλοποιήσεις repositories, migrations | Κανόνες εφαρμογής |
 
 ### 3.3 Result pattern
 
