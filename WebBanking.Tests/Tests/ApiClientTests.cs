@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Components;
 using WebBanking.Client.Services;
+using WebBanking.Client.Services.Interfaces;
 using WebBanking.Contracts.Auth;
 using WebBanking.Contracts.Common;
 

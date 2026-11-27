@@ -1,7 +1,7 @@
 using WebBanking.Contracts.Auth;
 using WebBanking.Contracts.Common;
 
-namespace WebBanking.Api.Services;
+namespace WebBanking.Api.Services.Interfaces;
 
 public interface ILoginService
 {

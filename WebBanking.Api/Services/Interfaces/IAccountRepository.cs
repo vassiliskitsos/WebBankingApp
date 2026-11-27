@@ -1,6 +1,6 @@
 using WebBanking.Api.Data.Entities;
 
-namespace WebBanking.Api.Services.Abstractions;
+namespace WebBanking.Api.Services.Interfaces;
 
 public interface IAccountRepository
 {

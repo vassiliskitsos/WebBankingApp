@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using WebBanking.Api.Data.Entities;
+using WebBanking.Api.Services.Interfaces;
 using WebBanking.Contracts.Auth;
 
 namespace WebBanking.Api.Services;

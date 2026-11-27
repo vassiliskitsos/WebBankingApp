@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using WebBanking.Client.Services;
+using WebBanking.Client.Services.Interfaces;
 using WebBanking.Contracts.Auth;
 
 namespace WebBanking.Tests.Tests;

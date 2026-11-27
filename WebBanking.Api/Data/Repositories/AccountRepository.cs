@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using WebBanking.Api.Data.Entities;
-using WebBanking.Api.Services.Abstractions;
+using WebBanking.Api.Services.Interfaces;
 
 namespace WebBanking.Api.Data.Repositories;
 

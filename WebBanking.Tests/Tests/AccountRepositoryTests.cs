@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using WebBanking.Api.Data;
 using WebBanking.Api.Data.Entities;
-using WebBanking.Api.Services.Abstractions;
+using WebBanking.Api.Services.Interfaces;
 using WebBanking.Tests.Infrastructure;
 
 namespace WebBanking.Tests.Tests;

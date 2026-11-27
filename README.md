@@ -68,7 +68,7 @@ flowchart LR
 |---|---|---|---|
 | Controllers | `Controllers/` | Λήψη request, κλήση service, μετατροπή `Result` σε HTTP status | Επιχειρησιακοί κανόνες, πρόσβαση στο `DbContext` |
 | Services | `Services/` | Κανόνες (υπόλοιπο, ownership), συντονισμός transactions, επιστροφή `Result<T>` | Γνώση HTTP, `IActionResult`, EF Core |
-| Repository interfaces | `Services/Abstractions/` | Ορισμός συμβολαίου πρόσβασης σε δεδομένα | Υλοποιήσεις |
+| Repository interfaces | `Services/Interfaces/` | Ορισμός συμβολαίου πρόσβασης σε δεδομένα | Υλοποιήσεις |
 | Data | `Data/` | `AppDbContext`, entities, υλοποιήσεις repositories, migrations | Κανόνες εφαρμογής |
 
 ### 3.3 Result pattern
@@ -104,7 +104,7 @@ public readonly record struct Result<T>(T? Value, Error? Error)
 ### 3.4 Repository pattern
 
 ```csharp
-// Services/Abstractions/IAccountRepository.cs
+// Services/Interfaces/IAccountRepository.cs
 public interface IAccountRepository
 {
     Task<Account?> GetOwnedAsync(int accountId, int userId, CancellationToken ct);
@@ -112,7 +112,7 @@ public interface IAccountRepository
     void Update(Account account);
 }
 
-// Services/Abstractions/IUnitOfWork.cs
+// Services/Interfaces/IUnitOfWork.cs
 public interface IUnitOfWork
 {
     Task BeginAsync(CancellationToken ct);
@@ -265,7 +265,7 @@ WebBankingApp/
 ├── WebBanking.Api/               # ASP.NET Core Web API
 │   ├── Controllers/              # HTTP endpoints, μετατροπή Result → HTTP
 │   ├── Services/                 # Κανόνες εφαρμογής
-│   │   └── Abstractions/         # Interfaces repositories και UnitOfWork
+│   │   └── Interfaces/           # Interfaces repositories και UnitOfWork
 │   ├── Data/                     # AppDbContext, entities, repositories, migrations
 │   └── Common/                   # Result<T>, Error
 ├── WebBanking.Client/            # Blazor WebAssembly

@@ -2,6 +2,8 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
 using WebBanking.Api.Data.Entities;
 using WebBanking.Api.Repositories;
+using WebBanking.Api.Repositories.Interfaces;
+using WebBanking.Api.Services.Interfaces;
 using WebBanking.Contracts.Auth;
 using WebBanking.Contracts.Common;
 

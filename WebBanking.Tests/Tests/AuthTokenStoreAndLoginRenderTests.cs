@@ -6,6 +6,7 @@ using Microsoft.JSInterop;
 using Microsoft.JSInterop.Infrastructure;
 using WebBanking.Client.Pages;
 using WebBanking.Client.Services;
+using WebBanking.Client.Services.Interfaces;
 using WebBanking.Contracts.Auth;
 using WebBanking.Contracts.Common;
 

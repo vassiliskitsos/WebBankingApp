@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using WebBanking.Api.Services;
+using WebBanking.Api.Services.Interfaces;
 using WebBanking.Contracts.Auth;
 using WebBanking.Contracts.Common;
 

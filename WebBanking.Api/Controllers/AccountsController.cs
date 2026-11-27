@@ -2,7 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebBanking.Api.Data.Entities;
-using WebBanking.Api.Services;
+using WebBanking.Api.Services.Interfaces;
 using WebBanking.Contracts.Accounts;
 using WebBanking.Contracts.Common;
 

@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
+using WebBanking.Client.Services.Interfaces;
 
 namespace WebBanking.Client.Services;
 
